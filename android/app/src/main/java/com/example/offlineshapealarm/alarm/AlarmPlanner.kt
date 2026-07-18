@@ -1,0 +1,4 @@
+package com.example.offlineshapealarm.alarm
+import java.time.*
+private val dayMap = mapOf("monday" to DayOfWeek.MONDAY,"tuesday" to DayOfWeek.TUESDAY,"wednesday" to DayOfWeek.WEDNESDAY,"thursday" to DayOfWeek.THURSDAY,"friday" to DayOfWeek.FRIDAY,"saturday" to DayOfWeek.SATURDAY,"sunday" to DayOfWeek.SUNDAY)
+fun nextTriggerMillis(payload: AlarmPayload, now: ZonedDateTime = ZonedDateTime.now()): Long? { val selected=payload.repeatDays.toSet(); for (offset in 0..7) { val date=now.toLocalDate().plusDays(offset.toLong()); val candidate=date.atTime(payload.hour,payload.minute).atZone(now.zone); val repeatName=dayMap.entries.firstOrNull{it.value==candidate.dayOfWeek}?.key; if ((selected.isEmpty() || selected.contains(repeatName)) && candidate.toInstant().toEpochMilli() > now.toInstant().toEpochMilli()) return candidate.toInstant().toEpochMilli(); if (selected.isEmpty()) break }; return null }
