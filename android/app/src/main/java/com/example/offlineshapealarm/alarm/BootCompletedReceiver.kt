@@ -1,0 +1,3 @@
+package com.example.offlineshapealarm.alarm
+import android.content.*; import android.util.Log
+class BootCompletedReceiver: BroadcastReceiver(){ override fun onReceive(context: Context, intent: Intent){ val actions=setOf(Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_LOCKED_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED); if(intent.action !in actions) return; var count=0; AlarmRegistry(context).all().forEach{ old -> nextTriggerMillis(old)?.let{ runCatching{ AlarmScheduling.schedule(context, old.copy(triggerAtEpochMillis=it), true); count++ }.onFailure{e -> Log.w("ShapeAlarm","Boot reschedule failed ${old.alarmId}",e)} } }; Log.d("ShapeAlarm","Boot rescheduling completed count=$count") } }
