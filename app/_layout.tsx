@@ -1,0 +1,5 @@
+import { Stack } from "expo-router";
+import { useEffect } from "react";
+import { ActivityIndicator, Text, View } from "react-native";
+import { useAppStore } from "@/state/appStore";
+export default function Layout() { const { initialize, loading, error } = useAppStore(); useEffect(() => { void initialize(); }, [initialize]); if (loading) return <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: 12 }}><ActivityIndicator size="large" /><Text>Opening local storage…</Text></View>; if (error) return <View style={{ flex: 1, justifyContent: "center", padding: 24, gap: 12 }}><Text style={{ fontSize: 20, fontWeight: "700" }}>Storage unavailable</Text><Text>{error}</Text></View>; return <Stack><Stack.Screen name="index" options={{ title: "Alarms" }} /><Stack.Screen name="alarms/new" options={{ title: "New alarm" }} /><Stack.Screen name="alarms/[id]" options={{ title: "Edit alarm" }} /><Stack.Screen name="challenge/[alarmId]" options={{ title: "Alarm challenge" }} /><Stack.Screen name="settings" options={{ title: "Settings" }} /></Stack>; }
