@@ -12,7 +12,7 @@ class MemoryAlarmRepository implements AlarmRepository {
   delete = async (id: string) => { if (!this.items.delete(id)) throw new Error("Not found"); };
   setEnabled = async (id: string, enabled: boolean) => { const alarm = this.items.get(id); if (!alarm) throw new Error("Not found"); this.items.set(id, { ...alarm, enabled }); };
 }
-const draft = { label: " Wake ", hour: 7, minute: 30, enabled: true, repeatDays: [], vibrationEnabled: true, challengeType: "shape-photo" as const, challengeDifficulty: "normal" as const, targetShapeId: "circle" };
+const draft = { label: " Wake ", hour: 7, minute: 30, enabled: true, repeatDays: [], vibrationEnabled: true, challengeType: "shape-photo" as const, challengeDifficulty: "normal" as const, targetShapeId: "elongated" };
 describe("alarm use cases", () => {
   it("creates a trimmed alarm", async () => { const alarms = new AlarmUseCases(new MemoryAlarmRepository()); const created = await alarms.create(draft); expect(created.label).toBe("Wake"); expect(created.id).not.toBe(""); });
   it("updates an existing alarm and its timestamp", async () => { const alarms = new AlarmUseCases(new MemoryAlarmRepository()); const created = await alarms.create(draft); const updated = await alarms.update(created.id, { ...draft, label: "Changed", minute: 45 }); expect(updated.label).toBe("Changed"); expect(updated.minute).toBe(45); expect(updated.createdAt).toBe(created.createdAt); });

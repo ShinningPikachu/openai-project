@@ -1,0 +1,4 @@
+import { describe, expect, it } from "vitest";
+import { createChallengeSession, transitionChallenge } from "../domain/ChallengeSession";
+import { createShapeSuccessCompletion } from "./completeChallenge";
+describe("completion history", () => { it("creates shape success completion without image storage", () => { const session = transitionChallenge(createChallengeSession("alarm-1", "elongated", new Date("2026-01-01T00:00:00Z")), "processing"); const completion = createShapeSuccessCompletion(session, "2026-01-01T00:00:00Z", { accepted: true, confidence: 0.9, targetShapeId: "elongated", processingDurationMs: 123 }, new Date("2026-01-01T00:01:00Z")); expect(completion).toMatchObject({ alarmId: "alarm-1", completionType: "shape-success", targetShapeId: "elongated", confidence: 0.9, attempts: 1, processingDurationMs: 123 }); expect(JSON.stringify(completion)).not.toContain("uri"); }); });

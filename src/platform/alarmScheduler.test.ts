@@ -1,0 +1,5 @@
+import { describe, expect, it } from "vitest";
+import type { Alarm } from "@/features/alarms/domain/alarm";
+import { toNativeAlarmPayload } from "./alarmScheduler";
+const alarm: Alarm = { id: "id-1", label: " Test ", hour: 9, minute: 15, enabled: true, repeatDays: ["monday"], vibrationEnabled: false, challengeType: "shape-photo", challengeDifficulty: "easy", targetShapeId: "elongated", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" };
+describe("native alarm payload validation", () => { it("builds the minimal native payload", () => { const payload = toNativeAlarmPayload(alarm, new Date(2026, 6, 18, 8)); expect(payload).toMatchObject({ alarmId: "id-1", hour: 9, minute: 15, repeatDays: ["monday"], soundId: "default" }); }); it("returns null for disabled alarms", () => expect(toNativeAlarmPayload({ ...alarm, enabled: false })).toBeNull()); });
