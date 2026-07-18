@@ -14,6 +14,7 @@ import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 import com.example.offlineshapealarm.alarm.ShapeAlarmSchedulerPackage
 import com.example.offlineshapealarm.alarm.createAlarmChannel
+import com.example.offlineshapealarm.challenge.ShapeCameraChallengePackage
 
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
@@ -28,6 +29,7 @@ class MainApplication : Application(), ReactApplication {
             // Packages that cannot be autolinked yet can be added manually here, for example:
             // packages.add(MyReactNativePackage())
             packages.add(ShapeAlarmSchedulerPackage())
+            packages.add(ShapeCameraChallengePackage())
             return packages
           }
 

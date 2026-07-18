@@ -8,7 +8,7 @@ const config: ExpoConfig = {
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   plugins: ["expo-router", "expo-sqlite"],
-  android: { package: "com.example.offlineshapealarm" },
+  android: { package: "com.example.offlineshapealarm", permissions: ["CAMERA", "VIBRATE", "WAKE_LOCK", "POST_NOTIFICATIONS", "SCHEDULE_EXACT_ALARM", "USE_FULL_SCREEN_INTENT", "FOREGROUND_SERVICE", "FOREGROUND_SERVICE_MEDIA_PLAYBACK", "RECEIVE_BOOT_COMPLETED"] },
   experiments: { typedRoutes: true },
 };
 

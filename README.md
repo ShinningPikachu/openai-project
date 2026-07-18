@@ -66,7 +66,7 @@ Record the physical device model, Android version, and manufacturer battery sett
 - [ ] One-time alarm rings with app backgrounded.
 - [ ] One-time alarm rings after app is swiped away.
 - [ ] Alarm can alert on the lock screen, subject to Android full-screen restrictions.
-- [ ] Sound loops until the long-press challenge completes.
+- [ ] Sound loops until a camera challenge succeeds or emergency override completes.
 - [ ] Vibration repeats when enabled and stops immediately on dismissal.
 - [ ] Foreground notification remains visible while ringing.
 - [ ] Notification opens the ringing interface.
@@ -86,4 +86,27 @@ Record the physical device model, Android version, and manufacturer battery sett
 - Android OEM battery restrictions can still delay or suppress background work; the app exposes permission state but cannot guarantee identical behaviour on all vendor builds.
 - Full-screen intents are subject to current Android policy and user settings, so users may need to open the persistent notification manually.
 - The native registry is an operational cache synchronized by app use cases; if a native schedule fails, the app disables the corresponding SQLite alarm rather than showing it as reliably enabled.
-- The temporary dismissal UI is a long-press challenge only. Shape recognition, camera capture, OpenCV, image storage, and custom sounds are intentionally not implemented in this phase.
+- Custom sounds and advanced OpenCV/ML classification remain deferred; the current camera challenge uses a lightweight local elongated-shape analyzer.
+
+
+## Phase 3 offline camera challenge foundation
+
+The temporary long-press challenge is being replaced by a camera challenge for the first supported target: **Elongated object**. The React Native layer owns challenge state, retry/result presentation, and completion history creation, while Android owns camera capture and local bitmap analysis through the `ShapeCameraChallenge` native module. Captures are written to app cache through a `FileProvider`, analyzed locally, and cleaned by a shared temporary-image cleanup method. Photos are not uploaded and are not intentionally stored permanently.
+
+The initial detector is a deterministic contour-style bitmap pipeline rather than a cloud or ML model. It resizes large images, estimates brightness, thresholds foreground against the scene average, extracts connected foreground components, selects the dominant component, computes bounding-box features, approximates oriented aspect ratio from the dominant component dimensions, and scores elongated-object confidence with configurable TypeScript thresholds for easy, normal, and hard difficulties.
+
+OpenCV remains isolated behind the local image-processor interface and can replace the current Android bitmap analyzer later without changing the challenge state machine or alarm service integration. Alarm audio, vibration, foreground notification, and active alarm state remain owned by the native alarm foreground service while the camera capture flow runs. A successful accepted result validates the active native alarm ID before sending the standard stop command; rejected and failed captures keep the alarm active. Emergency override remains available from the challenge UI.
+
+### Phase 3 manual camera test checklist
+
+- [ ] Camera permission granted.
+- [ ] Camera permission denied and app settings opened.
+- [ ] Capture a clearly elongated object such as a pen, spoon, toothbrush, or remote.
+- [ ] Capture a square or circular object and verify rejection.
+- [ ] Capture multiple objects and verify the multiple-object or low-confidence rejection path.
+- [ ] Capture an object near the border and verify cropped-object guidance.
+- [ ] Capture a dark scene and verify the dark-image message.
+- [ ] Retry five rejected attempts while alarm audio/vibration continue.
+- [ ] Accept a valid elongated object and verify the native alarm stops only after validation.
+- [ ] Use emergency override when camera permission or capture fails.
+- [ ] Confirm temporary cached challenge images are cleaned on startup or next challenge open.
