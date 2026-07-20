@@ -29,6 +29,10 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
     ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
   }
 }
+// Search Expo's nested node_modules as a fallback so native modules that are
+// direct app dependencies but not hoisted in node_modules (for example,
+// expo-asset) are still included in the generated ExpoModulesPackageList.
+expoAutolinking.searchPaths = ["node_modules", "node_modules/expo/node_modules"]
 expoAutolinking.useExpoModules()
 
 rootProject.name = 'Offline Shape Alarm'
