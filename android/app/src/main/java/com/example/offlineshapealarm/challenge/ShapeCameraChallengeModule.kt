@@ -1,14 +1,171 @@
 package com.example.offlineshapealarm.challenge
-import android.Manifest; import android.app.Activity; import android.content.*; import android.content.pm.PackageManager; import android.net.Uri; import android.os.Build; import android.provider.MediaStore; import android.provider.Settings; import androidx.core.content.FileProvider; import com.facebook.react.bridge.*; import com.facebook.react.modules.core.PermissionAwareActivity; import com.facebook.react.modules.core.PermissionListener; import java.io.File
-class ShapeCameraChallengeModule(private val ctx: ReactApplicationContext): ReactContextBaseJavaModule(ctx), ActivityEventListener, PermissionListener { private var permissionPromise:Promise?=null; private var capturePromise:Promise?=null; private var outputFile:File?=null; private var target="elongated"; private var difficulty="normal"; init{ ctx.addActivityEventListener(this) }; override fun getName()="ShapeCameraChallenge"
- @ReactMethod fun getCameraPermissionStatus(promise:Promise){ promise.resolve(status()) }
- @ReactMethod fun requestCameraPermission(promise:Promise){ if(Build.VERSION.SDK_INT<23){ promise.resolve("granted"); return }; val a=currentActivity as? PermissionAwareActivity ?: run{ promise.resolve(status()); return }; permissionPromise=promise; a.requestPermissions(arrayOf(Manifest.permission.CAMERA), 8844, this) }
- @ReactMethod fun captureAndAnalyze(targetShapeId:String, difficulty:String, promise:Promise){ if(status()!="granted"){ promise.reject("CAMERA_PERMISSION_DENIED","Camera permission is required."); return }; val activity=currentActivity ?: run{ promise.reject("CAMERA_UNAVAILABLE","No active Android activity."); return }; val dir=File(ctx.cacheDir,"challenge-images").apply{mkdirs()}; val file=File.createTempFile("challenge-", ".jpg", dir); outputFile=file; target=targetShapeId; this.difficulty=difficulty; capturePromise=promise; val uri=FileProvider.getUriForFile(ctx, ctx.packageName + ".challenge-files", file); val intent=Intent(MediaStore.ACTION_IMAGE_CAPTURE).putExtra(MediaStore.EXTRA_OUTPUT, uri).addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION); if(intent.resolveActivity(ctx.packageManager)==null){ promise.reject("CAMERA_UNAVAILABLE","No camera application is available."); capturePromise=null; return }; activity.startActivityForResult(intent, 8845) }
- override fun onActivityResult(activity:Activity?, requestCode:Int, resultCode:Int, data:Intent?){ if(requestCode!=8845)return; val promise=capturePromise ?: return; capturePromise=null; val file=outputFile; if(resultCode!=Activity.RESULT_OK || file==null || !file.exists()){ promise.reject("IMAGE_CAPTURE_FAILED","Camera capture did not produce an image."); return }; try{ val result=ShapeAnalyzer.analyze(file.absolutePath,target,difficulty); val image=Arguments.createMap(); image.putString("uri", Uri.fromFile(file).toString()); image.putInt("width", result.getMap("diagnostics")?.getInt("imageWidth") ?: 0); image.putInt("height", result.getMap("diagnostics")?.getInt("imageHeight") ?: 0); image.putInt("rotation",0); image.putString("capturedAt", java.time.Instant.now().toString()); val response=Arguments.createMap(); response.putMap("image",image); response.putMap("result",result); file.delete(); promise.resolve(response) } catch(e:Exception){ file.delete(); promise.reject("IMAGE_PROCESSING_FAILED", e.message, e) } }
- override fun onNewIntent(intent:Intent?) {}
- override fun onRequestPermissionsResult(requestCode:Int, permissions:Array<String>, grantResults:IntArray):Boolean{ if(requestCode!=8844)return false; permissionPromise?.resolve(status()); permissionPromise=null; return true }
- @ReactMethod fun openCameraSettings(promise:Promise){ ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).setData(Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); promise.resolve(null) }
- @ReactMethod fun cleanupTemporaryImages(promise:Promise){ val dir=File(ctx.cacheDir,"challenge-images"); var deleted=0; dir.listFiles()?.forEach{ if(it.isFile && it.name.startsWith("challenge-")){ if(it.delete()) deleted++ } }; promise.resolve(deleted) }
- private fun status():String = if(Build.VERSION.SDK_INT<23 || ctx.checkSelfPermission(Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED) "granted" else "denied"
+
+import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.net.Uri
+import android.provider.Settings
+import com.example.offlineshapealarm.BuildConfig
+import com.facebook.react.bridge.ActivityEventListener
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.Promise
+import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.ReactContextBaseJavaModule
+import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.modules.core.PermissionAwareActivity
+import com.facebook.react.modules.core.PermissionListener
+import java.io.File
+
+class ShapeCameraChallengeModule(private val context: ReactApplicationContext) :
+  ReactContextBaseJavaModule(context), ActivityEventListener, PermissionListener {
+  private var permissionPromise: Promise? = null
+  private var capturePromise: Promise? = null
+  private var target = "circle"
+  private var debugMode = false
+
+  init {
+    context.addActivityEventListener(this)
+  }
+
+  override fun getName() = "ShapeCameraChallenge"
+
+  @ReactMethod
+  fun getCameraPermissionStatus(promise: Promise) = promise.resolve(status())
+
+  @ReactMethod
+  fun requestCameraPermission(promise: Promise) {
+    if (Build.VERSION.SDK_INT < 23) {
+      promise.resolve("granted")
+      return
+    }
+    val activity = currentActivity as? PermissionAwareActivity ?: run {
+      promise.resolve(status())
+      return
+    }
+    permissionPromise = promise
+    activity.requestPermissions(arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_REQUEST, this)
+  }
+
+  @ReactMethod
+  fun captureAndAnalyze(targetShapeId: String, challengeDifficulty: String, promise: Promise) {
+    if (status() != "granted") {
+      promise.reject("CAMERA_PERMISSION_DENIED", "Camera permission is required.")
+      return
+    }
+    if (capturePromise != null) {
+      promise.reject("CAMERA_CAPTURE_IN_PROGRESS", "A camera challenge is already open.")
+      return
+    }
+    val activity = currentActivity ?: run {
+      promise.reject("CAMERA_UNAVAILABLE", "No active Android activity.")
+      return
+    }
+    target = when (targetShapeId) {
+      "square", "rectangle", "circle", "triangle", "spoon" -> targetShapeId
+      else -> "circle"
+    }
+    capturePromise = promise
+    activity.startActivityForResult(
+      Intent(activity, ChallengeCameraActivity::class.java)
+        .putExtra(ChallengeCameraActivity.EXTRA_TARGET, target)
+        .putExtra(ChallengeCameraActivity.EXTRA_DIFFICULTY, challengeDifficulty)
+        .putExtra(ChallengeCameraActivity.EXTRA_DEBUG, debugMode),
+      CAMERA_CAPTURE_REQUEST,
+    )
+  }
+
+  @ReactMethod
+  fun setDebugMode(enabled: Boolean) {
+    debugMode = BuildConfig.DEBUG && enabled
+  }
+
+  override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
+    if (requestCode != CAMERA_CAPTURE_REQUEST) return
+    val promise = capturePromise ?: return
+    capturePromise = null
+    if (resultCode != Activity.RESULT_OK) {
+      val error = data?.getStringExtra(ChallengeCameraActivity.EXTRA_ERROR)
+      promise.reject(
+        if (error == null) "CAMERA_CHALLENGE_CANCELLED" else "CAMERA_UNAVAILABLE",
+        error ?: "Camera challenge was cancelled.",
+      )
+      return
+    }
+    val resultData = data?.takeIf { it.hasExtra(ChallengeCameraActivity.EXTRA_MATCH_CONFIDENCE) }
+    if (resultData == null) {
+      promise.reject("CAMERA_RESULT_MISSING", "Camera challenge did not return a shape result.")
+      return
+    }
+    val stableMatchConfidence = resultData.getDoubleExtra(ChallengeCameraActivity.EXTRA_MATCH_CONFIDENCE, 0.0)
+    try {
+      val result = Arguments.createMap().apply {
+        putBoolean("accepted", true)
+        putDouble("confidence", stableMatchConfidence)
+        putString("targetShapeId", target)
+        putDouble("processingDurationMs", resultData.getDoubleExtra(ChallengeCameraActivity.EXTRA_PROCESSING_DURATION_MS, 0.0))
+        putMap("diagnostics", Arguments.createMap().apply {
+          putInt("contourCount", resultData.getIntExtra(ChallengeCameraActivity.EXTRA_CONTOUR_COUNT, 0))
+          putDouble("selectedContourArea", resultData.getDoubleExtra(ChallengeCameraActivity.EXTRA_CONTOUR_AREA, 0.0))
+          putDouble("borderContactRatio", resultData.getDoubleExtra(ChallengeCameraActivity.EXTRA_BORDER_CONTACT_RATIO, 0.0))
+          putString("detectionState", "matched")
+          putDouble("heldValidMs", 1_000.0)
+        })
+      }
+      val response = Arguments.createMap()
+      response.putNull("image")
+      response.putMap("result", result)
+      promise.resolve(response)
+    } catch (error: Exception) {
+      promise.reject("CAMERA_RESULT_PROCESSING_FAILED", error.message, error)
+    }
+  }
+
+  override fun onNewIntent(intent: Intent?) = Unit
+
+  override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray): Boolean {
+    if (requestCode != CAMERA_PERMISSION_REQUEST) return false
+    permissionPromise?.resolve(status())
+    permissionPromise = null
+    return true
+  }
+
+  @ReactMethod
+  fun openCameraSettings(promise: Promise) {
+    context.startActivity(
+      Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        .setData(Uri.parse("package:${context.packageName}"))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+    )
+    promise.resolve(null)
+  }
+
+  @ReactMethod
+  fun cleanupTemporaryImages(promise: Promise) {
+    val directory = File(context.cacheDir, "challenge-images")
+    var deleted = 0
+    directory.listFiles()?.forEach { file ->
+      if (file.isFile && file.name.startsWith("challenge-") && file.delete()) deleted++
+    }
+    promise.resolve(deleted)
+  }
+
+  private fun status(): String = if (
+    Build.VERSION.SDK_INT < 23 || context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+  ) {
+    "granted"
+  } else {
+    "denied"
+  }
+
+  private companion object {
+    const val CAMERA_PERMISSION_REQUEST = 8844
+    const val CAMERA_CAPTURE_REQUEST = 8845
+  }
 }
-class ShapeCameraChallengePackage: com.facebook.react.ReactPackage { override fun createNativeModules(c:ReactApplicationContext)= listOf(ShapeCameraChallengeModule(c)); override fun createViewManagers(c:ReactApplicationContext)= emptyList<com.facebook.react.uimanager.ViewManager<*,*>>() }
+
+class ShapeCameraChallengePackage : com.facebook.react.ReactPackage {
+  override fun createNativeModules(context: ReactApplicationContext) = listOf(ShapeCameraChallengeModule(context))
+  override fun createViewManagers(context: ReactApplicationContext) = emptyList<com.facebook.react.uimanager.ViewManager<*, *>>()
+}

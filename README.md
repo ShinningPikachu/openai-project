@@ -86,27 +86,30 @@ Record the physical device model, Android version, and manufacturer battery sett
 - Android OEM battery restrictions can still delay or suppress background work; the app exposes permission state but cannot guarantee identical behaviour on all vendor builds.
 - Full-screen intents are subject to current Android policy and user settings, so users may need to open the persistent notification manually.
 - The native registry is an operational cache synchronized by app use cases; if a native schedule fails, the app disables the corresponding SQLite alarm rather than showing it as reliably enabled.
-- Custom sounds and advanced OpenCV/ML classification remain deferred; the current camera challenge uses a lightweight local elongated-shape analyzer.
+- Custom sounds and advanced OpenCV/ML classification remain deferred; the current camera challenge uses a lightweight local simple-shape contour analyzer.
 
 
 ## Phase 3 offline camera challenge foundation
 
-The temporary long-press challenge is being replaced by a camera challenge for the first supported target: **Elongated object**. The React Native layer owns challenge state, retry/result presentation, and completion history creation, while Android owns camera capture and local bitmap analysis through the `ShapeCameraChallenge` native module. Captures are written to app cache through a `FileProvider`, analyzed locally, and cleaned by a shared temporary-image cleanup method. Photos are not uploaded and are not intentionally stored permanently.
+The temporary long-press challenge is being replaced by a CameraX-based camera challenge for five supported targets: **circle**, **triangle**, **square**, **rectangle**, and a **spoon-like silhouette**. The React Native layer owns challenge state and completion history creation, while Android owns an in-app CameraX preview and local YUV-frame analysis through the `ShapeCameraChallenge` native module. Preview and analysis use the same letterboxed aspect ratio and central guide, so neither frames nor contours are stretched. CameraX keeps only the latest YUV frame, analysis is throttled off the UI thread, and every `ImageProxy` is closed. The outer frame is darkened, a target guide is shown in the clear center region, and the guide moves from neutral to yellow to green before automatically accepting approximately one continuous second of matching. The live frame is not retained as a photo or uploaded.
 
-The initial detector is a deterministic contour-style bitmap pipeline rather than a cloud or ML model. It resizes large images, estimates brightness, thresholds foreground against the scene average, extracts connected foreground components, selects the dominant component, computes bounding-box features, approximates oriented aspect ratio from the dominant component dimensions, and scores elongated-object confidence with configurable TypeScript thresholds for easy, normal, and hard difficulties.
+The initial detector is a deterministic, on-device contour pipeline rather than a cloud or ML model. It corrects orientation before cropping the same center guide shown in the preview, clusters the cropped YUV colors, and uses the largest relevant uniform-color region as the primary object candidate. Color-distance tolerances are configured per shape and allow lighting shifts, shadows, reflections, and small internal color variation; cleaned adaptive luminance and edge masks remain a fallback when no viable color region is found. Candidate silhouettes are scored with normalized contour and silhouette similarity, polygon corners, circularity, aspect ratio, solidity, convexity, extent, Hu moments, color uniformity, area, and position instead of relying on rigid individual shape gates. A rolling confidence window tolerates an isolated unstable frame but requires approximately one continuous second above the selected target threshold before accepting. A debug-only overlay can show the cropped mask, selected color region, contour, score components, stability, rejection reason, and processing time without retaining or logging camera images.
 
-OpenCV remains isolated behind the local image-processor interface and can replace the current Android bitmap analyzer later without changing the challenge state machine or alarm service integration. Alarm audio, vibration, foreground notification, and active alarm state remain owned by the native alarm foreground service while the camera capture flow runs. A successful accepted result validates the active native alarm ID before sending the standard stop command; rejected and failed captures keep the alarm active. Emergency override remains available from the challenge UI.
+OpenCV can replace the current local contour pipeline later without changing the challenge state machine or alarm service integration. Alarm audio, vibration, foreground notification, and active alarm state remain owned by the native alarm foreground service while the camera capture flow runs. A successful accepted result validates the active native alarm ID before sending the standard stop command; rejected and failed captures keep the alarm active. Emergency override remains available from the challenge UI.
 
 ### Phase 3 manual camera test checklist
 
 - [ ] Camera permission granted.
 - [ ] Camera permission denied and app settings opened.
-- [ ] Capture a clearly elongated object such as a pen, spoon, toothbrush, or remote.
-- [ ] Capture a square or circular object and verify rejection.
+- [ ] Open the in-app camera and verify the preview has its natural proportions with no vertical stretch.
+- [ ] Verify the dark outer frame, clear center guide, and selected circle, triangle, square, rectangle, or spoon-like contour.
+- [ ] Hold a matching simple shape inside the guide and verify it turns green.
+- [ ] Verify one continuous second of matching automatically accepts the challenge without a capture button.
+- [ ] Hold a long, uniform object such as a pen for the spoon target and verify `Shape does not match`.
 - [ ] Capture multiple objects and verify the multiple-object or low-confidence rejection path.
-- [ ] Capture an object near the border and verify cropped-object guidance.
+- [ ] Capture an object outside the guide and verify `Move object to the center`.
 - [ ] Capture a dark scene and verify the dark-image message.
 - [ ] Retry five rejected attempts while alarm audio/vibration continue.
-- [ ] Accept a valid elongated object and verify the native alarm stops only after validation.
-- [ ] Use emergency override when camera permission or capture fails.
-- [ ] Confirm temporary cached challenge images are cleaned on startup or next challenge open.
+- [ ] Accept a valid similar contour and verify the native alarm stops only after validation.
+- [ ] Use emergency override when camera permission or live analysis fails.
+- [ ] Confirm a successful live match completes without retaining a photo.

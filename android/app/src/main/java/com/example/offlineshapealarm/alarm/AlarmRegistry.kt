@@ -11,6 +11,8 @@ class AlarmRegistry(context: Context) { private val prefs=context.getSharedPrefe
 class ActiveAlarmStore(context: Context) { private val prefs=context.getSharedPreferences("shape_alarm_active", Context.MODE_PRIVATE)
  fun ringing(payload: AlarmPayload) { prefs.edit().putString("alarmId",payload.alarmId).putString("label",payload.label).putString("triggeredAt", java.time.Instant.now().toString()).putString("status","ringing").apply() }
  fun dismissed(id:String, reason:String) { prefs.edit().putString("alarmId",id).putString("status","dismissed").putString("dismissReason",reason).apply() }
- fun current(): JSONObject? = prefs.getString("alarmId", null)?.let { JSONObject().put("alarmId", it).put("label", prefs.getString("label","Alarm")).put("triggeredAt", prefs.getString("triggeredAt", java.time.Instant.now().toString())).put("status", prefs.getString("status","ringing")) }
+ fun current(): JSONObject? = prefs.getString("alarmId", null)
+  ?.takeIf { prefs.getString("status", null) == "ringing" }
+  ?.let { JSONObject().put("alarmId", it).put("label", prefs.getString("label","Alarm")).put("triggeredAt", prefs.getString("triggeredAt", java.time.Instant.now().toString())).put("status", "ringing") }
  fun clear(){ prefs.edit().clear().apply() }
 }

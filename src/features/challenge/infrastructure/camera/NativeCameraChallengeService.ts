@@ -1,10 +1,77 @@
 import type { ChallengeDifficulty } from "@/features/alarms/domain/alarm";
-import type { NativeCameraChallengeService as Service, CameraPermissionStatus, CapturedImage } from "./CameraCaptureService";
-import type { ShapeDetectionResult } from "../../domain/ShapeDetectionResult";
+import type {
+  CameraChallengeCapture,
+  CameraPermissionStatus,
+  NativeCameraChallengeService as Service,
+} from "./CameraCaptureService";
 import { CameraUnavailableError } from "../../domain/ChallengeErrors";
-type NativeModule = { requestCameraPermission(): Promise<CameraPermissionStatus>; getCameraPermissionStatus(): Promise<CameraPermissionStatus>; captureAndAnalyze(targetShapeId: string, difficulty: ChallengeDifficulty): Promise<{ image: CapturedImage; result: ShapeDetectionResult }>; openCameraSettings(): Promise<void>; cleanupTemporaryImages(): Promise<void>; };
-declare const require: (name: string) => { NativeModules?: Record<string, unknown>; Platform?: { OS?: string } };
+
+type NativeModule = {
+  requestCameraPermission(): Promise<CameraPermissionStatus>;
+  getCameraPermissionStatus(): Promise<CameraPermissionStatus>;
+  captureAndAnalyze(
+    targetShapeId: string,
+    difficulty: ChallengeDifficulty,
+  ): Promise<CameraChallengeCapture>;
+  setDebugMode?(enabled: boolean): void;
+  openCameraSettings(): Promise<void>;
+  cleanupTemporaryImages(): Promise<void>;
+};
+
+declare const require: (name: string) => {
+  NativeModules?: Record<string, unknown>;
+  Platform?: { OS?: string };
+};
+
 const reactNative = () => require("react-native");
 const isAndroid = () => reactNative().Platform?.OS === "android";
-const native = (): NativeModule => { const module = reactNative().NativeModules?.ShapeCameraChallenge as NativeModule | undefined; if (!module) throw new CameraUnavailableError("Native camera challenge module is unavailable."); return module; };
-export class AndroidCameraChallengeService implements Service { async requestPermission() { return isAndroid() ? native().requestCameraPermission() : "restricted"; } async getPermissionStatus() { return isAndroid() ? native().getCameraPermissionStatus() : "restricted"; } async capture(): Promise<CapturedImage> { const response = await this.captureAndAnalyze("elongated", "normal"); return response.image; } captureAndAnalyze(targetShapeId: string, difficulty: ChallengeDifficulty) { return native().captureAndAnalyze(targetShapeId, difficulty); } openAppSettings() { return native().openCameraSettings(); } cleanupTemporaryImages() { return isAndroid() ? native().cleanupTemporaryImages() : Promise.resolve(); } }
+const isNativeCameraUnavailable = (error: unknown) =>
+  Boolean(
+    error &&
+      typeof error === "object" &&
+      (error as { code?: unknown }).code === "CAMERA_UNAVAILABLE",
+  );
+const native = (): NativeModule => {
+  const module = reactNative().NativeModules?.ShapeCameraChallenge as
+    | NativeModule
+    | undefined;
+  if (!module) {
+    throw new CameraUnavailableError(
+      "Native camera challenge module is unavailable.",
+    );
+  }
+  return module;
+};
+
+export class AndroidCameraChallengeService implements Service {
+  async requestPermission() {
+    return isAndroid() ? native().requestCameraPermission() : "restricted";
+  }
+
+  async getPermissionStatus() {
+    return isAndroid() ? native().getCameraPermissionStatus() : "restricted";
+  }
+
+  async captureAndAnalyze(targetShapeId: string, difficulty: ChallengeDifficulty) {
+    try {
+      return await native().captureAndAnalyze(targetShapeId, difficulty);
+    } catch (error) {
+      if (isNativeCameraUnavailable(error)) {
+        throw new CameraUnavailableError("Camera preview is unavailable.");
+      }
+      throw error;
+    }
+  }
+
+  setDebugMode(enabled: boolean) {
+    if (isAndroid()) native().setDebugMode?.(enabled);
+  }
+
+  openAppSettings() {
+    return native().openCameraSettings();
+  }
+
+  cleanupTemporaryImages() {
+    return isAndroid() ? native().cleanupTemporaryImages() : Promise.resolve();
+  }
+}

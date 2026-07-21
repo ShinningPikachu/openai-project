@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Alarm } from "./alarm";
 import { getNextAlarmOccurrence } from "./nextOccurrence";
-const base: Alarm = { id: "a", label: "Wake", hour: 7, minute: 30, enabled: true, repeatDays: [], vibrationEnabled: true, challengeType: "shape-photo", challengeDifficulty: "normal", targetShapeId: "elongated", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" };
+const base: Alarm = { id: "a", label: "Wake", hour: 7, minute: 30, enabled: true, repeatDays: [], vibrationEnabled: true, challengeType: "shape-photo", challengeDifficulty: "normal", targetShapeId: "circle", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" };
 const iso = (d: Date | null) => d?.toISOString();
 describe("getNextAlarmOccurrence", () => {
   it("schedules later today", () => expect(iso(getNextAlarmOccurrence(base, new Date(2026, 6, 18, 7, 0)))).toBe(new Date(2026, 6, 18, 7, 30).toISOString()));

@@ -3,7 +3,10 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import type { Alarm } from "@/features/alarms/domain/alarm";
 import { alarmNativeActions } from "@/platform/alarmScheduler";
 import { analyzeCapturedImage } from "../application/analyzeCapturedImage";
-import { completeAcceptedChallenge } from "../application/completeChallenge";
+import {
+  ActiveAlarmMismatchError,
+  completeAcceptedChallenge,
+} from "../application/completeChallenge";
 import { retryChallenge } from "../application/retryChallenge";
 import { startCameraChallenge } from "../application/startCameraChallenge";
 import { CameraUnavailableError } from "../domain/ChallengeErrors";
@@ -30,9 +33,12 @@ export function CameraChallengeScreen({
   onCompleted(): void;
 }) {
   const service = useMemo(() => new AndroidCameraChallengeService(), []);
+  const targetRegistry = useMemo(() => new StaticShapeTargetRegistry(), []);
   const target = useMemo(
-    () => new StaticShapeTargetRegistry().getById("elongated")!,
-    [],
+    () =>
+      targetRegistry.getById(alarm.targetShapeId) ??
+      targetRegistry.getById("circle")!,
+    [alarm.targetShapeId, targetRegistry],
   );
   const [session, setSessionState] = useState<ChallengeSession>(() =>
     startCameraChallenge(alarm.id, target.id),
@@ -55,6 +61,10 @@ export function CameraChallengeScreen({
     if (isCameraUnavailable(cause)) {
       setCameraUnavailable(true);
       setError(unavailableMessage);
+    } else if (cause instanceof ActiveAlarmMismatchError) {
+      setError(
+        "This challenge is no longer tied to a ringing alarm. Return to the active alarm and try again.",
+      );
     } else {
       console.error(cause);
       setError(
@@ -65,6 +75,12 @@ export function CameraChallengeScreen({
   }, []);
 
   useEffect(() => {
+    try {
+      service.setDebugMode?.(__DEV__);
+    } catch (cause) {
+      handleCameraError(cause);
+      return;
+    }
     void service.cleanupTemporaryImages().catch(handleCameraError);
     void service
       .getPermissionStatus()
@@ -115,20 +131,21 @@ export function CameraChallengeScreen({
         target.id,
         alarm.challengeDifficulty,
       );
-      setResult(response.result);
       if (response.result.accepted) {
         const accepted = transitionChallenge(
           sessionRef.current,
           "accepted",
           response.result,
         );
-        setSession(accepted);
         await completeAcceptedChallenge(accepted, response.result);
+        setSession(accepted);
         onCompleted();
-      } else
+      } else {
+        setResult(response.result);
         setSession((current) =>
           transitionChallenge(current, "rejected", response.result),
         );
+      }
     } catch (cause) {
       handleCameraError(cause);
     }
@@ -146,7 +163,8 @@ export function CameraChallengeScreen({
           onPress: () =>
             void alarmNativeActions
               .stopActiveAlarm(alarm.id, "emergency-override")
-              .then(onCompleted),
+              .then(onCompleted)
+              .catch(handleCameraError),
         },
       ],
     );
@@ -168,14 +186,14 @@ export function CameraChallengeScreen({
     <View style={styles.container}>
       <Text style={styles.label}>{alarm.label || "Alarm"}</Text>
       <Text style={styles.target}>{target.name}</Text>
-      <ChallengeInstructions />
-      <ShapeOverlay />
+      <ChallengeInstructions targetName={target.name} />
+      <ShapeOverlay targetShapeId={target.id} />
       {permission !== "granted" ? (
         <View style={styles.card}>
           <Text>
             {cameraUnavailable
               ? unavailableMessage
-              : "Camera access is required to photograph an object and complete the alarm challenge. Images are processed locally and are not uploaded."}
+              : "Camera access is required to analyze an object and complete the alarm challenge. Shape data is processed locally and is not uploaded."}
           </Text>
           <Pressable
             style={[styles.button, cameraUnavailable && styles.disabled]}
@@ -198,14 +216,14 @@ export function CameraChallengeScreen({
       ) : (
         <Pressable
           disabled={session.status === "processing" || cameraUnavailable}
-          accessibilityLabel="Capture elongated object photo"
+          accessibilityLabel={`Open automatic shape camera for ${target.name}`}
           style={[styles.capture, cameraUnavailable && styles.disabled]}
           onPress={() => void capture()}
         >
           <Text style={styles.buttonText}>
             {session.status === "processing"
               ? "Processing…"
-              : "Open camera and capture"}
+              : "Open automatic shape camera"}
           </Text>
         </Pressable>
       )}

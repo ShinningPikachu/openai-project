@@ -1,2 +1,4 @@
 import { createChallengeSession } from "../domain/ChallengeSession";
-export const startCameraChallenge = (alarmId: string, targetShapeId = "elongated") => createChallengeSession(alarmId, targetShapeId);
+
+export const startCameraChallenge = (alarmId: string, targetShapeId = "circle") =>
+  createChallengeSession(alarmId, targetShapeId);
