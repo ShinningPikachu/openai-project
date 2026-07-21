@@ -11,6 +11,7 @@ export const colors = {
   success: "#166534",
   successSoft: "#DCFCE7",
   danger: "#B42318",
+  dangerSoft: "#FEE4E2",
   guide: "#0F3D5E",
   guideLine: "#FFFFFF",
   guideFill: "rgba(255,255,255,0.20)",

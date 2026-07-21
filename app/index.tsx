@@ -1,9 +1,11 @@
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text } from "react-native";
 import { AlarmCard } from "@/components/AlarmCard";
 import { ScreenContainer } from "@/components/ScreenContainer";
 import {
   alarmNativeActions,
+  isNativeAlarmSchedulerAvailable,
   isExactAlarmPermissionError,
   isNotificationPermissionError,
 } from "@/platform/alarmScheduler";
@@ -11,6 +13,41 @@ import { useAppStore } from "@/state/appStore";
 import { colors } from "@/theme/colors";
 export default function AlarmList() {
   const { alarms, toggleAlarm, deleteAlarm } = useAppStore();
+  const [ringingAlarmId, setRingingAlarmId] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isCurrent = true;
+
+      const refreshRingingAlarm = async () => {
+        if (!isNativeAlarmSchedulerAvailable()) {
+          if (isCurrent) setRingingAlarmId(null);
+          return;
+        }
+
+        try {
+          const activeAlarm = await alarmNativeActions.getActiveAlarm();
+          if (isCurrent) {
+            setRingingAlarmId(
+              activeAlarm?.status === "ringing" ? activeAlarm.alarmId : null,
+            );
+          }
+        } catch (error) {
+          console.warn("Could not check the active alarm.", error);
+          if (isCurrent) setRingingAlarmId(null);
+        }
+      };
+
+      void refreshRingingAlarm();
+      const interval = setInterval(() => void refreshRingingAlarm(), 2_000);
+
+      return () => {
+        isCurrent = false;
+        clearInterval(interval);
+      };
+    }, []),
+  );
+
   const remove = (id: string) =>
     Alert.alert("Delete alarm?", "This alarm will be permanently removed.", [
       { text: "Cancel", style: "cancel" },
@@ -61,8 +98,10 @@ export default function AlarmList() {
           <AlarmCard
             key={alarm.id}
             alarm={alarm}
+            isRinging={alarm.id === ringingAlarmId}
             onToggle={(enabled) => toggle(alarm.id, enabled)}
             onEdit={() => router.push(`/alarms/${alarm.id}`)}
+            onOpenChallenge={() => router.push(`/challenge/${alarm.id}`)}
             onDelete={() => remove(alarm.id)}
           />
         ))
