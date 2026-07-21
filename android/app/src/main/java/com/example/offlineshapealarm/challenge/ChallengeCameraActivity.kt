@@ -26,7 +26,6 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
-import com.example.offlineshapealarm.BuildConfig
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.max
@@ -37,14 +36,11 @@ class ChallengeCameraActivity : ComponentActivity() {
   companion object {
     const val EXTRA_TARGET = "target"
     const val EXTRA_DIFFICULTY = "difficulty"
-    const val EXTRA_DEBUG = "debug"
     const val EXTRA_ERROR = "error"
     const val EXTRA_MATCH_CONFIDENCE = "matchConfidence"
     const val EXTRA_PROCESSING_DURATION_MS = "processingDurationMs"
-    const val EXTRA_CONTOUR_AREA = "contourArea"
-    const val EXTRA_CONTOUR_COUNT = "contourCount"
-    const val EXTRA_BORDER_CONTACT_RATIO = "borderContactRatio"
     private const val FRAME_INTERVAL_MS = 100L
+    private const val FRAME_FAILURE_LOG_INTERVAL_MS = 5_000L
     private const val REQUIRED_MATCH_MS = 1_000L
     private const val TAG = "ShapeCameraChallenge"
   }
@@ -55,21 +51,20 @@ class ChallengeCameraActivity : ComponentActivity() {
   private lateinit var difficulty: String
   private lateinit var feedback: TextView
   private lateinit var guide: TargetContourGuideView
-  private var debugOverlay: ShapeDetectionDebugOverlayView? = null
   private var cameraProvider: ProcessCameraProvider? = null
   private var imageAnalysis: ImageAnalysis? = null
   private val analysisExecutor: ExecutorService = Executors.newSingleThreadExecutor()
   private val detectionPipeline = ShapeDetectionPipeline()
   private val stabilityTracker = DetectionStabilityTracker(requiredStableMs = REQUIRED_MATCH_MS)
   private var lastFrameAt = 0L
+  private var lastFrameFailureLogAt = 0L
   private var luminanceBuffer = IntArray(0)
   private var chromaUBuffer = IntArray(0)
   private var chromaVBuffer = IntArray(0)
   private var lastMatchConfidence = 0.0
-  private var lastAnalysis: ShapeAnalysis? = null
+  private var lastProcessingDurationMs = 0.0
   private var cameraActive = false
   private var accepting = false
-  private var debugEnabled = false
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -86,7 +81,6 @@ class ChallengeCameraActivity : ComponentActivity() {
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     target = normalizeTarget(intent.getStringExtra(EXTRA_TARGET))
     difficulty = intent.getStringExtra(EXTRA_DIFFICULTY) ?: "normal"
-    debugEnabled = BuildConfig.DEBUG && intent.getBooleanExtra(EXTRA_DEBUG, false)
 
     val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
     previewFrame = AspectRatioFrameLayout(this)
@@ -103,13 +97,6 @@ class ChallengeCameraActivity : ComponentActivity() {
       guide,
       FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
     )
-    if (debugEnabled) {
-      debugOverlay = ShapeDetectionDebugOverlayView(this)
-      previewFrame.addView(
-        debugOverlay,
-        FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
-      )
-    }
     root.addView(
       previewFrame,
       FrameLayout.LayoutParams(
@@ -255,7 +242,6 @@ class ChallengeCameraActivity : ComponentActivity() {
         targetValue = target,
         difficulty = difficulty,
         rotationDegrees = rotationDegrees,
-        includeDebug = debugEnabled,
         chromaU = if (chromaAvailable) chromaUBuffer else null,
         chromaV = if (chromaAvailable) chromaVBuffer else null,
       )
@@ -263,7 +249,11 @@ class ChallengeCameraActivity : ComponentActivity() {
         if (cameraActive && !accepting && !isFinishing) updateGuideFromAnalysis(analysis)
       }
     } catch (error: Exception) {
-      Log.w(TAG, "Frame analysis failed", error)
+      val now = SystemClock.elapsedRealtime()
+      if (now - lastFrameFailureLogAt >= FRAME_FAILURE_LOG_INTERVAL_MS) {
+        lastFrameFailureLogAt = now
+        Log.w(TAG, "Frame analysis failed", error)
+      }
       runOnUiThread {
         if (cameraActive && !accepting && !isFinishing) resetMatch("No object detected", GuideState.NEUTRAL)
       }
@@ -316,7 +306,7 @@ class ChallengeCameraActivity : ComponentActivity() {
   }
 
   private fun updateGuideFromAnalysis(analysis: ShapeAnalysis) {
-    lastAnalysis = analysis
+    lastProcessingDurationMs = analysis.processingDurationMs.toDouble()
     val temporal = stabilityTracker.update(analysis, SystemClock.elapsedRealtime())
     guide.setState(
       when {
@@ -328,10 +318,6 @@ class ChallengeCameraActivity : ComponentActivity() {
     )
     feedback.text = temporal.feedback
     lastMatchConfidence = temporal.smoothedConfidence
-    debugOverlay?.update(analysis, temporal)
-    if (debugEnabled) {
-      Log.d(TAG, "${analysis.structuredLog()} rolling=${formatConfidence(temporal.smoothedConfidence)} progress=${formatConfidence(temporal.progress)}")
-    }
     if (temporal.stable) acceptStableMatch()
   }
 
@@ -350,10 +336,7 @@ class ChallengeCameraActivity : ComponentActivity() {
     feedback.text = "Shape detected"
     val result = Intent()
       .putExtra(EXTRA_MATCH_CONFIDENCE, lastMatchConfidence)
-      .putExtra(EXTRA_PROCESSING_DURATION_MS, lastAnalysis?.processingDurationMs?.toDouble() ?: 0.0)
-      .putExtra(EXTRA_CONTOUR_AREA, lastAnalysis?.features?.contourArea ?: 0.0)
-      .putExtra(EXTRA_CONTOUR_COUNT, lastAnalysis?.candidateCount ?: 0)
-      .putExtra(EXTRA_BORDER_CONTACT_RATIO, lastAnalysis?.features?.borderContactRatio ?: 0.0)
+      .putExtra(EXTRA_PROCESSING_DURATION_MS, lastProcessingDurationMs)
     setResult(Activity.RESULT_OK, result)
     finish()
   }
@@ -375,8 +358,6 @@ class ChallengeCameraActivity : ComponentActivity() {
     "spoon" -> "spoon-like"
     else -> "round"
   }
-
-  private fun formatConfidence(value: Double): String = "%.2f".format(java.util.Locale.US, value)
 
   private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 }

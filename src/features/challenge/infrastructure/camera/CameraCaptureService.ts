@@ -18,7 +18,5 @@ export interface NativeCameraChallengeService extends CameraCaptureService {
     targetShapeId: string,
     difficulty: ChallengeDifficulty,
   ): Promise<CameraChallengeCapture>;
-  setDebugMode?(enabled: boolean): void;
   openAppSettings(): Promise<void>;
-  cleanupTemporaryImages(): Promise<void>;
 }

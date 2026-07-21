@@ -66,7 +66,6 @@ class DetectionStabilityTrackerTest {
     meanBrightness = 120.0,
     processingDurationMs = 3,
     classifiedShape = SupportedShape.CIRCLE,
-    debugSnapshot = null,
   )
 
   private fun partial(): ShapeAnalysis = match().copy(

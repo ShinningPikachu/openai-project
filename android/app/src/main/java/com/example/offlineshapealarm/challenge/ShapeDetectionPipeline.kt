@@ -88,16 +88,6 @@ internal data class FeatureScores(
   val weightedConfidence: Double,
 )
 
-internal data class DebugFrameSnapshot(
-  val normalizedFrame: IntArray,
-  val selectedMask: BooleanArray?,
-  val width: Int,
-  val height: Int,
-  val hull: List<ContourPoint>,
-  val candidateSource: String?,
-  val regionSummary: String?,
-)
-
 internal data class ShapeAnalysis(
   val target: SupportedShape,
   val confidence: Double,
@@ -111,19 +101,7 @@ internal data class ShapeAnalysis(
   val meanBrightness: Double,
   val processingDurationMs: Long,
   val classifiedShape: SupportedShape?,
-  val debugSnapshot: DebugFrameSnapshot?,
-) {
-  fun structuredLog(): String {
-    val scores = featureScores
-    return "shape_detection state=${state.wireValue} target=${target.id} confidence=${format(confidence)} " +
-      "threshold=${format(acceptanceThreshold)} candidates=$candidateCount durationMs=$processingDurationMs " +
-      "contour=${format(scores?.contourSimilarity)} silhouette=${format(scores?.silhouette)} " +
-      "hu=${format(scores?.huMoments)} color=${format(scores?.colorUniformity)} " +
-      "corners=${format(scores?.polygon)} circularity=${format(scores?.circularity)}"
-  }
-
-  private fun format(value: Double?): String = value?.let { "%.2f".format(java.util.Locale.US, it) } ?: "-"
-}
+)
 
 internal data class FeatureWeights(
   val contourSimilarity: Double,
@@ -292,7 +270,6 @@ internal class ShapeDetectionPipeline(
     targetValue: String,
     difficulty: String,
     rotationDegrees: Int = 0,
-    includeDebug: Boolean = false,
     chromaU: IntArray? = null,
     chromaV: IntArray? = null,
   ): ShapeAnalysis {
@@ -353,9 +330,7 @@ internal class ShapeDetectionPipeline(
             component,
             profile,
             scores,
-            candidateMask.mask,
             candidateMask.colorUniformity,
-            candidateMask.summary,
           )
         }
       }
@@ -392,7 +367,7 @@ internal class ShapeDetectionPipeline(
         sawSmallCandidate -> DetectionState.MOVE_CLOSER
         else -> DetectionState.NO_OBJECT
       }
-      return failure(target, state, configuration.acceptanceThreshold(difficulty), candidateCount, meanBrightness, startedAt, includeDebug, normalized, prepared)
+      return failure(target, state, configuration.acceptanceThreshold(difficulty), candidateCount, meanBrightness, startedAt)
     }
 
     val targetScore = selected.featureScores.weightedConfidence
@@ -416,19 +391,6 @@ internal class ShapeDetectionPipeline(
       targetScore >= configuration.partialThreshold && targetIsCompetitive -> DetectionState.PARTIAL_MATCH
       else -> DetectionState.MISMATCH
     }
-    val debug = if (includeDebug) {
-      DebugFrameSnapshot(
-        normalizedFrame = normalized,
-        selectedMask = selected.mask,
-        width = prepared.width,
-        height = prepared.height,
-        hull = selected.profile.hull,
-        candidateSource = selected.component.source,
-        regionSummary = selected.regionSummary,
-      )
-    } else {
-      null
-    }
     return ShapeAnalysis(
       target = target,
       confidence = targetScore,
@@ -442,7 +404,6 @@ internal class ShapeDetectionPipeline(
       meanBrightness = meanBrightness,
       processingDurationMs = elapsedMillis(startedAt),
       classifiedShape = bestAlternative,
-      debugSnapshot = debug,
     )
   }
 
@@ -453,9 +414,6 @@ internal class ShapeDetectionPipeline(
     candidateCount: Int,
     meanBrightness: Double,
     startedAt: Long,
-    includeDebug: Boolean = false,
-    normalized: IntArray? = null,
-    prepared: PreparedFrame? = null,
   ): ShapeAnalysis = ShapeAnalysis(
     target = target,
     confidence = 0.0,
@@ -469,11 +427,6 @@ internal class ShapeDetectionPipeline(
     meanBrightness = meanBrightness,
     processingDurationMs = elapsedMillis(startedAt),
     classifiedShape = null,
-    debugSnapshot = if (includeDebug && normalized != null && prepared != null) {
-      DebugFrameSnapshot(normalized, null, prepared.width, prepared.height, emptyList(), null, null)
-    } else {
-      null
-    },
   )
 
   private fun failureReasonFor(state: DetectionState): String? = when (state) {
@@ -666,13 +619,10 @@ internal class ShapeDetectionPipeline(
       val uniformity = if (matched == 0) 0.0 else {
         (1 - totalDistance / matched / 2).coerceIn(0.25, 1.0)
       }
-      val summary = "Y=${center.luminance.roundToInt()} U=${center.u.roundToInt()} V=${center.v.roundToInt()} " +
-        "uniform=${"%.2f".format(java.util.Locale.US, uniformity)}"
       NamedMask(
         name = "uniform-color-${index + 1}",
         mask = openThenClose(mask, width, height),
         colorUniformity = uniformity,
-        summary = summary,
       )
     }
   }
@@ -1371,7 +1321,6 @@ internal class ShapeDetectionPipeline(
     val name: String,
     val mask: BooleanArray,
     val colorUniformity: Double = 0.5,
-    val summary: String? = null,
   )
 
   private data class ColorCenter(
@@ -1435,9 +1384,7 @@ internal class ShapeDetectionPipeline(
     val component: MaskComponent,
     val profile: ContourProfile,
     val featureScores: FeatureScores,
-    val mask: BooleanArray,
     val colorUniformity: Double,
-    val regionSummary: String?,
   ) {
     val primaryRegionScore: Double
       get() {

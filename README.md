@@ -54,10 +54,6 @@ When an alarm fires, `AlarmReceiver` validates the payload, starts `AlarmForegro
 
 Multiple simultaneous alarms use an MVP single-session rule: the service prevents duplicate playback for the same alarm and keeps one active foreground audio/vibration session. Closely overlapping alarms may replace the visible session instead of starting overlapping players; this limitation should be revisited when queued alarm sessions are implemented.
 
-### Development alarm test screen
-
-A development-only screen is available from the alarm list in `__DEV__` builds. It can schedule a test alarm 10 or 60 seconds from now, cancel the test alarm, and display permission status, active alarm state, and native registry records. It is hidden in production builds.
-
 ### Manual Android test checklist
 
 Record the physical device model, Android version, and manufacturer battery settings before testing.
@@ -66,7 +62,7 @@ Record the physical device model, Android version, and manufacturer battery sett
 - [ ] One-time alarm rings with app backgrounded.
 - [ ] One-time alarm rings after app is swiped away.
 - [ ] Alarm can alert on the lock screen, subject to Android full-screen restrictions.
-- [ ] Sound loops until a camera challenge succeeds or emergency override completes.
+- [ ] Sound loops until the configured challenge succeeds or emergency override completes.
 - [ ] Vibration repeats when enabled and stops immediately on dismissal.
 - [ ] Foreground notification remains visible while ringing.
 - [ ] Notification opens the ringing interface.
@@ -93,7 +89,7 @@ Record the physical device model, Android version, and manufacturer battery sett
 
 The temporary long-press challenge is being replaced by a CameraX-based camera challenge for five supported targets: **circle**, **triangle**, **square**, **rectangle**, and a **spoon-like silhouette**. The React Native layer owns challenge state and completion history creation, while Android owns an in-app CameraX preview and local YUV-frame analysis through the `ShapeCameraChallenge` native module. Preview and analysis use the same letterboxed aspect ratio and central guide, so neither frames nor contours are stretched. CameraX keeps only the latest YUV frame, analysis is throttled off the UI thread, and every `ImageProxy` is closed. The outer frame is darkened, a target guide is shown in the clear center region, and the guide moves from neutral to yellow to green before automatically accepting approximately one continuous second of matching. The live frame is not retained as a photo or uploaded.
 
-The initial detector is a deterministic, on-device contour pipeline rather than a cloud or ML model. It corrects orientation before cropping the same center guide shown in the preview, clusters the cropped YUV colors, and uses the largest relevant uniform-color region as the primary object candidate. Color-distance tolerances are configured per shape and allow lighting shifts, shadows, reflections, and small internal color variation; cleaned adaptive luminance and edge masks remain a fallback when no viable color region is found. Candidate silhouettes are scored with normalized contour and silhouette similarity, polygon corners, circularity, aspect ratio, solidity, convexity, extent, Hu moments, color uniformity, area, and position instead of relying on rigid individual shape gates. A rolling confidence window tolerates an isolated unstable frame but requires approximately one continuous second above the selected target threshold before accepting. A debug-only overlay can show the cropped mask, selected color region, contour, score components, stability, rejection reason, and processing time without retaining or logging camera images.
+The initial detector is a deterministic, on-device contour pipeline rather than a cloud or ML model. It corrects orientation before cropping the same center guide shown in the preview, clusters the cropped YUV colors, and uses the largest relevant uniform-color region as the primary object candidate. Color-distance tolerances are configured per shape and allow lighting shifts, shadows, reflections, and small internal color variation; cleaned adaptive luminance and edge masks remain a fallback when no viable color region is found. Candidate silhouettes are scored with normalized contour and silhouette similarity, polygon corners, circularity, aspect ratio, solidity, convexity, extent, Hu moments, color uniformity, area, and position instead of relying on rigid individual shape gates. A rolling confidence window tolerates an isolated unstable frame but requires approximately one continuous second above the selected target threshold before accepting. Camera analysis remains local and does not retain or log camera images.
 
 OpenCV can replace the current local contour pipeline later without changing the challenge state machine or alarm service integration. Alarm audio, vibration, foreground notification, and active alarm state remain owned by the native alarm foreground service while the camera capture flow runs. A successful accepted result validates the active native alarm ID before sending the standard stop command; rejected and failed captures keep the alarm active. Emergency override remains available from the challenge UI.
 

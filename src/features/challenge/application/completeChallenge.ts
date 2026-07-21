@@ -1,5 +1,5 @@
 import type { ChallengeSession } from "../domain/ChallengeSession";
-import type { ShapeDetectionResult } from "../domain/ShapeDetectionResult";
+import type { AlarmChallengeResult } from "../domain/AlarmChallengeResult";
 import { alarmNativeActions } from "@/platform/alarmScheduler";
 
 export class ActiveAlarmMismatchError extends Error {
@@ -18,8 +18,8 @@ const isActiveAlarmMismatch = (error: unknown) =>
   );
 
 export interface AlarmCompletion { id: string; alarmId: string; triggeredAt: string; completedAt: string; completionType: "shape-success" | "emergency-override" | "system-error"; targetShapeId?: string; confidence?: number; attempts: number; processingDurationMs?: number; }
-export function createShapeSuccessCompletion(session: ChallengeSession, triggeredAt: string, result: ShapeDetectionResult, now = new Date()): AlarmCompletion { return { id: `${session.id}-completion`, alarmId: session.alarmId, triggeredAt, completedAt: now.toISOString(), completionType: "shape-success", targetShapeId: result.targetShapeId, confidence: result.confidence, attempts: session.attemptCount, processingDurationMs: result.processingDurationMs }; }
-export async function completeAcceptedChallenge(session: ChallengeSession, result: ShapeDetectionResult): Promise<AlarmCompletion | null> {
+export function createShapeSuccessCompletion(session: ChallengeSession, triggeredAt: string, result: AlarmChallengeResult, now = new Date()): AlarmCompletion { return { id: `${session.id}-completion`, alarmId: session.alarmId, triggeredAt, completedAt: now.toISOString(), completionType: "shape-success", targetShapeId: result.targetShapeId, confidence: result.confidence, attempts: session.attemptCount, processingDurationMs: result.processingDurationMs }; }
+export async function completeAcceptedChallenge(session: ChallengeSession, result: AlarmChallengeResult): Promise<AlarmCompletion | null> {
   if (!result.accepted) throw new Error("Rejected challenge results cannot stop an alarm.");
   const active = await alarmNativeActions.getActiveAlarm();
   if (!active) return null;

@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.net.Uri
 import android.provider.Settings
-import com.example.offlineshapealarm.BuildConfig
 import com.facebook.react.bridge.ActivityEventListener
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
@@ -16,14 +15,12 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.modules.core.PermissionAwareActivity
 import com.facebook.react.modules.core.PermissionListener
-import java.io.File
 
 class ShapeCameraChallengeModule(private val context: ReactApplicationContext) :
   ReactContextBaseJavaModule(context), ActivityEventListener, PermissionListener {
   private var permissionPromise: Promise? = null
   private var capturePromise: Promise? = null
   private var target = "circle"
-  private var debugMode = false
 
   init {
     context.addActivityEventListener(this)
@@ -70,15 +67,9 @@ class ShapeCameraChallengeModule(private val context: ReactApplicationContext) :
     activity.startActivityForResult(
       Intent(activity, ChallengeCameraActivity::class.java)
         .putExtra(ChallengeCameraActivity.EXTRA_TARGET, target)
-        .putExtra(ChallengeCameraActivity.EXTRA_DIFFICULTY, challengeDifficulty)
-        .putExtra(ChallengeCameraActivity.EXTRA_DEBUG, debugMode),
+        .putExtra(ChallengeCameraActivity.EXTRA_DIFFICULTY, challengeDifficulty),
       CAMERA_CAPTURE_REQUEST,
     )
-  }
-
-  @ReactMethod
-  fun setDebugMode(enabled: Boolean) {
-    debugMode = BuildConfig.DEBUG && enabled
   }
 
   override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
@@ -105,13 +96,6 @@ class ShapeCameraChallengeModule(private val context: ReactApplicationContext) :
         putDouble("confidence", stableMatchConfidence)
         putString("targetShapeId", target)
         putDouble("processingDurationMs", resultData.getDoubleExtra(ChallengeCameraActivity.EXTRA_PROCESSING_DURATION_MS, 0.0))
-        putMap("diagnostics", Arguments.createMap().apply {
-          putInt("contourCount", resultData.getIntExtra(ChallengeCameraActivity.EXTRA_CONTOUR_COUNT, 0))
-          putDouble("selectedContourArea", resultData.getDoubleExtra(ChallengeCameraActivity.EXTRA_CONTOUR_AREA, 0.0))
-          putDouble("borderContactRatio", resultData.getDoubleExtra(ChallengeCameraActivity.EXTRA_BORDER_CONTACT_RATIO, 0.0))
-          putString("detectionState", "matched")
-          putDouble("heldValidMs", 1_000.0)
-        })
       }
       val response = Arguments.createMap()
       response.putNull("image")
@@ -139,16 +123,6 @@ class ShapeCameraChallengeModule(private val context: ReactApplicationContext) :
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
     )
     promise.resolve(null)
-  }
-
-  @ReactMethod
-  fun cleanupTemporaryImages(promise: Promise) {
-    val directory = File(context.cacheDir, "challenge-images")
-    var deleted = 0
-    directory.listFiles()?.forEach { file ->
-      if (file.isFile && file.name.startsWith("challenge-") && file.delete()) deleted++
-    }
-    promise.resolve(deleted)
   }
 
   private fun status(): String = if (

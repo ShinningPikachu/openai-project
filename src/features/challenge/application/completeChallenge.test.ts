@@ -115,4 +115,21 @@ describe("completion history", () => {
     await completeAcceptedChallenge(session(), acceptedResult);
     expect(nativeActions.stopActiveAlarm).toHaveBeenCalledWith("alarm-1", "shape-success");
   });
+
+  it("uses the same guarded completion flow for an offline minigame", async () => {
+    nativeActions.getActiveAlarm.mockResolvedValue({
+      alarmId: "alarm-1",
+      label: "Alarm",
+      triggeredAt: "2026-01-01T00:00:00Z",
+      status: "ringing",
+    });
+
+    await completeAcceptedChallenge(session(), {
+      accepted: true,
+      confidence: 1,
+      processingDurationMs: 80,
+    });
+
+    expect(nativeActions.stopActiveAlarm).toHaveBeenCalledWith("alarm-1", "shape-success");
+  });
 });

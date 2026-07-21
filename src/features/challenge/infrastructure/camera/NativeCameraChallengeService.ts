@@ -13,9 +13,7 @@ type NativeModule = {
     targetShapeId: string,
     difficulty: ChallengeDifficulty,
   ): Promise<CameraChallengeCapture>;
-  setDebugMode?(enabled: boolean): void;
   openCameraSettings(): Promise<void>;
-  cleanupTemporaryImages(): Promise<void>;
 };
 
 declare const require: (name: string) => {
@@ -63,15 +61,7 @@ export class AndroidCameraChallengeService implements Service {
     }
   }
 
-  setDebugMode(enabled: boolean) {
-    if (isAndroid()) native().setDebugMode?.(enabled);
-  }
-
   openAppSettings() {
     return native().openCameraSettings();
-  }
-
-  cleanupTemporaryImages() {
-    return isAndroid() ? native().cleanupTemporaryImages() : Promise.resolve();
   }
 }

@@ -91,11 +91,9 @@ class ShapeDetectionPipelineTest {
       sourceHeight = options.height,
       targetValue = "circle",
       difficulty = "normal",
-      includeDebug = true,
     )
 
     assertTrue(analysis.rawAccepted)
-    assertTrue(analysis.debugSnapshot?.candidateSource?.startsWith("uniform-color") == true)
     assertTrue(analysis.featureScores!!.colorUniformity > 0.8)
   }
 
@@ -118,11 +116,9 @@ class ShapeDetectionPipelineTest {
       sourceHeight = options.height,
       targetValue = "circle",
       difficulty = "normal",
-      includeDebug = true,
     )
 
     assertTrue(analysis.rawAccepted)
-    assertTrue(analysis.debugSnapshot?.candidateSource?.startsWith("uniform-color") == true)
   }
 
   private fun analyze(

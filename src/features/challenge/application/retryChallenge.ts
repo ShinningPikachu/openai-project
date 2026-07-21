@@ -1,2 +1,3 @@
 import { transitionChallenge, type ChallengeSession } from "../domain/ChallengeSession";
-export const retryChallenge = (session: ChallengeSession) => transitionChallenge(session, "camera-ready");
+export const retryAlarmChallenge = (session: ChallengeSession) => transitionChallenge(session, "camera-ready");
+export const retryChallenge = retryAlarmChallenge;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
-import type { Alarm, AlarmDraft, RepeatDay } from "@/features/alarms/domain/alarm";
+import { challengeTypeLabels, type Alarm, type AlarmDraft, type ChallengeType, type RepeatDay } from "@/features/alarms/domain/alarm";
 import type { AppSettings } from "@/features/settings/domain/settings";
 import {
   normalizeShapeTargetId,
@@ -23,6 +23,8 @@ const days: RepeatDay[] = [
   "sunday",
 ];
 
+const challengeTypes: ChallengeType[] = ["shape-photo", "quick-addition", "connect-dots"];
+
 export function AlarmEditorForm({
   alarm,
   settings,
@@ -42,6 +44,12 @@ export function AlarmEditorForm({
   );
   const [targetShapeId, setTargetShapeId] = useState<SimpleShapeTargetId>(() =>
     normalizeShapeTargetId(alarm?.targetShapeId),
+  );
+  const [challengeType, setChallengeType] = useState<ChallengeType>(
+    alarm?.challengeType ?? "shape-photo",
+  );
+  const [additionQuestionCount, setAdditionQuestionCount] = useState(
+    String(alarm?.additionQuestionCount ?? 3),
   );
   const [error, setError] = useState<string | null>(null);
   const [needsExactAlarmPermission, setNeedsExactAlarmPermission] = useState(false);
@@ -68,6 +76,7 @@ export function AlarmEditorForm({
   const submit = async () => {
     const numericHour = Number(hour);
     const numericMinute = Number(minute);
+    const numericAdditionQuestionCount = Number(additionQuestionCount);
     if (
       !Number.isInteger(numericHour) ||
       numericHour < 0 ||
@@ -77,6 +86,13 @@ export function AlarmEditorForm({
       numericMinute > 59
     ) {
       setError("Enter an hour from 0–23 and a minute from 0–59.");
+      return;
+    }
+    if (
+      challengeType === "quick-addition" &&
+      (!Number.isInteger(numericAdditionQuestionCount) || numericAdditionQuestionCount < 1 || numericAdditionQuestionCount > 8)
+    ) {
+      setError("Choose from 1 to 8 addition questions.");
       return;
     }
     try {
@@ -90,10 +106,11 @@ export function AlarmEditorForm({
         enabled,
         repeatDays,
         vibrationEnabled,
-        challengeType: "shape-photo",
+        challengeType,
         challengeDifficulty:
           alarm?.challengeDifficulty ?? settings?.defaultChallengeDifficulty ?? "normal",
         targetShapeId,
+        additionQuestionCount: challengeType === "quick-addition" ? numericAdditionQuestionCount : 3,
       });
     } catch (cause) {
       console.error(cause);
@@ -180,9 +197,26 @@ export function AlarmEditorForm({
 
       <View>
         <Text style={styles.label}>Challenge type</Text>
-        <Text style={styles.value}>Shape Photo Challenge</Text>
+        <View style={styles.challengeTypes}>
+          {challengeTypes.map((type) => {
+            const selected = type === challengeType;
+            return (
+              <Pressable
+                key={type}
+                onPress={() => setChallengeType(type)}
+                style={[styles.challengeType, selected && styles.challengeTypeSelected]}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.challengeTypeText, selected && styles.challengeTypeTextSelected]}>
+                  {challengeTypeLabels[type]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
-      <View>
+      {challengeType === "shape-photo" ? <View>
         <Text style={styles.label}>Target shape</Text>
         <View style={styles.shapeTargets}>
           {simpleShapeTargets.map((shape) => {
@@ -205,7 +239,19 @@ export function AlarmEditorForm({
             );
           })}
         </View>
-      </View>
+      </View> : null}
+      {challengeType === "quick-addition" ? (
+        <View>
+          <Text style={styles.label}>Correct answers required (1–8)</Text>
+          <TextInput
+            value={additionQuestionCount}
+            onChangeText={setAdditionQuestionCount}
+            keyboardType="number-pad"
+            style={styles.input}
+            accessibilityLabel="Correct addition answers required"
+          />
+        </View>
+      ) : null}
 
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       {needsExactAlarmPermission ? (
@@ -260,7 +306,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 4,
   },
-  value: { color: "#4b5563" },
+  challengeTypes: { gap: 8 },
+  challengeType: { borderWidth: 1, borderColor: "#9ca3af", borderRadius: 10, padding: 12 },
+  challengeTypeSelected: { backgroundColor: "#1d4ed8", borderColor: "#1d4ed8" },
+  challengeTypeText: { fontWeight: "700" },
+  challengeTypeTextSelected: { color: "white" },
   shapeTargets: { gap: 8 },
   shapeTarget: {
     borderWidth: 1,
