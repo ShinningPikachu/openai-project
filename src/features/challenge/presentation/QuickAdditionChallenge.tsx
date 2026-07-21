@@ -1,15 +1,17 @@
 import { useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { generateAdditionQuestion } from "../domain/additionChallenge";
 import type { AlarmChallengeViewProps } from "./AlarmChallengeView";
+import { colors } from "@/theme/colors";
 
 export function QuickAdditionChallenge({
   alarm,
   onAccepted,
   onSessionTransition,
 }: AlarmChallengeViewProps) {
-  const [question, setQuestion] = useState(() => generateAdditionQuestion(alarm.challengeDifficulty));
-  const [answer, setAnswer] = useState("");
+  const [question, setQuestion] = useState(() =>
+    generateAdditionQuestion(alarm.challengeDifficulty),
+  );
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -18,7 +20,6 @@ export function QuickAdditionChallenge({
 
   const nextQuestion = () => {
     setQuestion(generateAdditionQuestion(alarm.challengeDifficulty));
-    setAnswer("");
   };
 
   const completeChallenge = async () => {
@@ -30,22 +31,12 @@ export function QuickAdditionChallenge({
     });
   };
 
-  const submit = async () => {
-    const normalizedAnswer = answer.trim();
-    if (!/^\d+$/.test(normalizedAnswer)) {
-      setMessage("Enter a whole-number answer.");
-      return;
-    }
+  const selectAnswer = async (answer: number) => {
     if (submitting) return;
 
     setSubmitting(true);
     onSessionTransition("processing");
-    if (correctAnswers >= requiredAnswers) {
-      await completeChallenge();
-      setSubmitting(false);
-      return;
-    }
-    if (Number(normalizedAnswer) !== question.total) {
+    if (answer !== question.total) {
       setMessage("That is not quite right. Here is a new question.");
       nextQuestion();
       onSessionTransition("camera-ready");
@@ -71,47 +62,67 @@ export function QuickAdditionChallenge({
   return (
     <View style={styles.card}>
       <Text style={styles.instructions}>
-        Solve {requiredAnswers} simple sum{requiredAnswers === 1 ? "" : "s"} to dismiss the alarm.
+        Solve {requiredAnswers} simple sum{requiredAnswers === 1 ? "" : "s"} to
+        dismiss the alarm.
       </Text>
       <Text accessibilityRole="header" style={styles.progress}>
         Correct answers: {correctAnswers} of {requiredAnswers}
       </Text>
-      <Text style={styles.question} accessibilityLabel={`What is ${question.left} plus ${question.right}?`}>
+      <Text
+        style={styles.question}
+        accessibilityLabel={`What is ${question.left} plus ${question.right}?`}
+      >
         {question.left} + {question.right} = ?
       </Text>
-      <TextInput
-        value={answer}
-        onChangeText={setAnswer}
-        onSubmitEditing={() => void submit()}
-        keyboardType="number-pad"
-        returnKeyType="done"
-        editable={!submitting}
-        style={styles.input}
-        accessibilityLabel="Addition answer"
-        accessibilityHint="Enter the answer, then press Check answer."
-      />
-      {message ? <Text accessibilityLiveRegion="polite" style={styles.message}>{message}</Text> : null}
-      <Pressable
-        onPress={() => void submit()}
-        disabled={submitting}
-        style={[styles.button, submitting && styles.disabled]}
-        accessibilityRole="button"
-        accessibilityLabel="Check addition answer"
-      >
-        <Text style={styles.buttonText}>{submitting ? "Checking…" : "Check answer"}</Text>
-      </Pressable>
+      <View style={styles.answers} accessibilityLabel="Answer choices">
+        {question.options.map((option) => (
+          <Pressable
+            key={option}
+            onPress={() => void selectAnswer(option)}
+            disabled={submitting}
+            style={[styles.answer, submitting && styles.disabled]}
+            accessibilityRole="button"
+            accessibilityLabel={`Answer ${option}`}
+            accessibilityHint="Select this answer for the current sum."
+          >
+            <Text style={styles.answerText}>{option}</Text>
+          </Pressable>
+        ))}
+      </View>
+      {message ? (
+        <Text accessibilityLiveRegion="polite" style={styles.message}>
+          {message}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { gap: 16, padding: 20, borderRadius: 16, backgroundColor: "#fff" },
-  instructions: { color: "#374151", textAlign: "center" },
-  progress: { fontWeight: "700", textAlign: "center" },
-  question: { fontSize: 38, fontWeight: "800", textAlign: "center", color: "#111827" },
-  input: { borderWidth: 1, borderColor: "#9ca3af", borderRadius: 10, padding: 14, fontSize: 24, textAlign: "center" },
-  message: { color: "#374151", textAlign: "center" },
-  button: { backgroundColor: "#1d4ed8", padding: 15, borderRadius: 10, alignItems: "center" },
-  buttonText: { color: "white", fontWeight: "800", fontSize: 16 },
+  card: {
+    gap: 16,
+    padding: 20,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+  },
+  instructions: { color: colors.textMuted, textAlign: "center" },
+  progress: { color: colors.text, fontWeight: "700", textAlign: "center" },
+  question: {
+    fontSize: 38,
+    fontWeight: "800",
+    textAlign: "center",
+    color: colors.text,
+  },
+  answers: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  answer: {
+    alignItems: "center",
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    flexBasis: "46%",
+    flexGrow: 1,
+    padding: 15,
+  },
+  answerText: { color: colors.surface, fontSize: 24, fontWeight: "800" },
+  message: { color: colors.textMuted, textAlign: "center" },
   disabled: { opacity: 0.5 },
 });

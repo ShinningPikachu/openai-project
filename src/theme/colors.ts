@@ -1,0 +1,17 @@
+export const colors = {
+  background: "#F1F5F9",
+  surface: "#FFFFFF",
+  surfaceMuted: "#E2E8F0",
+  text: "#0F172A",
+  textMuted: "#334155",
+  border: "#64748B",
+  primary: "#075985",
+  primarySoft: "#E0F2FE",
+  primarySoftOverlay: "rgba(224,242,254,0.55)",
+  success: "#166534",
+  successSoft: "#DCFCE7",
+  danger: "#B42318",
+  guide: "#0F3D5E",
+  guideLine: "#FFFFFF",
+  guideFill: "rgba(255,255,255,0.20)",
+} as const;

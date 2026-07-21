@@ -10,11 +10,11 @@ describe("simple shape targets", () => {
       "triangle",
       "square",
       "rectangle",
-      "spoon",
     ]);
   });
 
-  it("maps legacy elongated alarms to the spoon-like target", () => {
-    expect(registry.getById("elongated")?.id).toBe("spoon");
+  it("does not expose the removed spoon-like target", () => {
+    expect(registry.getById("spoon")).toBeNull();
+    expect(registry.getById("elongated")).toBeNull();
   });
 });

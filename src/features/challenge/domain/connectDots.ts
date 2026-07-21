@@ -20,11 +20,14 @@ const pointCounts: Record<ChallengeDifficulty, number> = {
 const gridSize = 4;
 const jitter = 0.02;
 
-const shuffle = <T,>(items: readonly T[], random: Random): T[] => {
+const shuffle = <T>(items: readonly T[], random: Random): T[] => {
   const shuffled = [...items];
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(random() * (index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex]!, shuffled[index]!];
+    [shuffled[index], shuffled[swapIndex]] = [
+      shuffled[swapIndex]!,
+      shuffled[index]!,
+    ];
   }
   return shuffled;
 };
@@ -43,9 +46,16 @@ export function generateConnectDotsPattern(
   difficultyOrRandom: ChallengeDifficulty | Random = "normal",
   providedRandom: Random = Math.random,
 ): ConnectDotsPattern {
-  const random = typeof difficultyOrRandom === "function" ? difficultyOrRandom : providedRandom;
-  const difficulty = typeof difficultyOrRandom === "function" ? "normal" : difficultyOrRandom;
-  const selectedCells = shuffle(gridCells, random).slice(0, pointCounts[difficulty]);
+  const random =
+    typeof difficultyOrRandom === "function"
+      ? difficultyOrRandom
+      : providedRandom;
+  const difficulty =
+    typeof difficultyOrRandom === "function" ? "normal" : difficultyOrRandom;
+  const selectedCells = shuffle(gridCells, random).slice(
+    0,
+    pointCounts[difficulty],
+  );
 
   return {
     points: selectedCells.map(({ column, row }) => ({

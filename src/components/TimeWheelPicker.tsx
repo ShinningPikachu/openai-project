@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { colors } from "@/theme/colors";
 import { formatWheelValue, wrapWheelValue } from "./timeWheelValue";
 
 const rowHeight = 44;
@@ -30,7 +31,8 @@ export function TimeWheelPicker({
   );
 
   const centerIndexFor = useCallback(
-    (nextValue: number) => centerCycle * count + wrapWheelValue(nextValue, count),
+    (nextValue: number) =>
+      centerCycle * count + wrapWheelValue(nextValue, count),
     [count],
   );
 
@@ -42,30 +44,40 @@ export function TimeWheelPicker({
   useEffect(() => {
     if (valueRef.current === normalizedValue) return;
     valueRef.current = normalizedValue;
-    requestAnimationFrame(() => scrollToIndex(centerIndexFor(normalizedValue), false));
+    requestAnimationFrame(() =>
+      scrollToIndex(centerIndexFor(normalizedValue), false),
+    );
   }, [centerIndexFor, normalizedValue, scrollToIndex]);
 
-  const settleAtIndex = useCallback((rawIndex: number) => {
-    const index = Math.min(Math.max(rawIndex, 0), data.length - 1);
-    const nextValue = index % count;
-    const nearBoundary = index < count * 2 || index > data.length - count * 3;
+  const settleAtIndex = useCallback(
+    (rawIndex: number) => {
+      const index = Math.min(Math.max(rawIndex, 0), data.length - 1);
+      const nextValue = index % count;
+      const nearBoundary = index < count * 2 || index > data.length - count * 3;
 
-    listIndexRef.current = index;
-    if (nextValue !== valueRef.current) {
+      listIndexRef.current = index;
+      if (nextValue !== valueRef.current) {
+        valueRef.current = nextValue;
+        onValueChange(nextValue);
+      }
+      if (nearBoundary) {
+        requestAnimationFrame(() =>
+          scrollToIndex(centerIndexFor(nextValue), false),
+        );
+      }
+    },
+    [centerIndexFor, count, data.length, onValueChange, scrollToIndex],
+  );
+
+  const adjust = useCallback(
+    (direction: 1 | -1) => {
+      const nextValue = wrapWheelValue(valueRef.current + direction, count);
       valueRef.current = nextValue;
       onValueChange(nextValue);
-    }
-    if (nearBoundary) {
-      requestAnimationFrame(() => scrollToIndex(centerIndexFor(nextValue), false));
-    }
-  }, [centerIndexFor, count, data.length, onValueChange, scrollToIndex]);
-
-  const adjust = useCallback((direction: 1 | -1) => {
-    const nextValue = wrapWheelValue(valueRef.current + direction, count);
-    valueRef.current = nextValue;
-    onValueChange(nextValue);
-    scrollToIndex(centerIndexFor(nextValue), true);
-  }, [centerIndexFor, count, onValueChange, scrollToIndex]);
+      scrollToIndex(centerIndexFor(nextValue), true);
+    },
+    [centerIndexFor, count, onValueChange, scrollToIndex],
+  );
 
   return (
     <View
@@ -92,6 +104,7 @@ export function TimeWheelPicker({
       <View pointerEvents="none" style={styles.selection} />
       <ScrollView
         ref={scrollRef}
+        style={styles.scroll}
         contentOffset={{ x: 0, y: listIndexRef.current * rowHeight }}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -102,17 +115,27 @@ export function TimeWheelPicker({
         snapToInterval={rowHeight}
         snapToAlignment="start"
         onMomentumScrollEnd={(event) =>
-          settleAtIndex(Math.round(event.nativeEvent.contentOffset.y / rowHeight))
+          settleAtIndex(
+            Math.round(event.nativeEvent.contentOffset.y / rowHeight),
+          )
         }
       >
-        {data.map((index) => <Text key={index} style={styles.value}>{formatWheelValue(index % count)}</Text>)}
+        {data.map((index) => (
+          <Text key={index} style={styles.value}>
+            {formatWheelValue(index % count)}
+          </Text>
+        ))}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { height: rowHeight * 3, overflow: "hidden", position: "relative" },
+  container: {
+    height: rowHeight * 3,
+    overflow: "hidden",
+    position: "relative",
+  },
   content: { paddingVertical: rowHeight },
   selection: {
     position: "absolute",
@@ -122,9 +145,18 @@ const styles = StyleSheet.create({
     height: rowHeight,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: "#1d4ed8",
-    backgroundColor: "#dbeafe80",
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoftOverlay,
+  },
+  scroll: {
     zIndex: 1,
   },
-  value: { height: rowHeight, fontSize: 24, fontVariant: ["tabular-nums"], textAlign: "center", textAlignVertical: "center" },
+  value: {
+    color: colors.text,
+    height: rowHeight,
+    fontSize: 24,
+    fontVariant: ["tabular-nums"],
+    textAlign: "center",
+    textAlignVertical: "center",
+  },
 });

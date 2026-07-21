@@ -44,7 +44,7 @@
       </intent-filter>
     </receiver>
     <service android:name=".alarm.AlarmForegroundService" android:exported="false" android:foregroundServiceType="mediaPlayback"/>
-    <activity android:name=".alarm.AlarmActivity" android:exported="false" android:showWhenLocked="true" android:turnScreenOn="true" android:excludeFromRecents="true" android:theme="@android:style/Theme.Material.NoActionBar"/>
+    <activity android:name=".alarm.AlarmActivity" android:exported="false" android:showWhenLocked="true" android:turnScreenOn="true" android:excludeFromRecents="true" android:theme="@style/Theme.ShapeAlarm.Fullscreen"/>
     <activity android:name=".challenge.ChallengeCameraActivity" android:exported="false" android:showWhenLocked="true" android:turnScreenOn="true" android:theme="@android:style/Theme.Material.NoActionBar"/>
   </application>
 </manifest>

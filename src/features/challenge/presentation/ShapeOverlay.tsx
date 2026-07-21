@@ -1,7 +1,12 @@
 import { StyleSheet, View } from "react-native";
+import { colors } from "@/theme/colors";
 import type { SimpleShapeTargetId } from "../domain/ShapeTarget";
 
-export function ShapeOverlay({ targetShapeId }: { targetShapeId: SimpleShapeTargetId }) {
+export function ShapeOverlay({
+  targetShapeId,
+}: {
+  targetShapeId: SimpleShapeTargetId;
+}) {
   return (
     <View
       pointerEvents="none"
@@ -10,17 +15,13 @@ export function ShapeOverlay({ targetShapeId }: { targetShapeId: SimpleShapeTarg
     >
       <View style={styles.guide}>
         {targetShapeId === "square" ? <View style={styles.square} /> : null}
-        {targetShapeId === "rectangle" ? <View style={styles.rectangle} /> : null}
+        {targetShapeId === "rectangle" ? (
+          <View style={styles.rectangle} />
+        ) : null}
         {targetShapeId === "circle" ? <View style={styles.circle} /> : null}
         {targetShapeId === "triangle" ? (
           <View style={styles.triangleBorder}>
             <View style={styles.triangleFill} />
-          </View>
-        ) : null}
-        {targetShapeId === "spoon" ? (
-          <View style={styles.spoon}>
-            <View style={styles.spoonBowl} />
-            <View style={styles.spoonHandle} />
           </View>
         ) : null}
       </View>
@@ -30,8 +31,8 @@ export function ShapeOverlay({ targetShapeId }: { targetShapeId: SimpleShapeTarg
 
 const contour = {
   borderWidth: 3,
-  borderColor: "#fef3c7",
-  backgroundColor: "rgba(255,255,255,0.16)",
+  borderColor: colors.guideLine,
+  backgroundColor: colors.guideFill,
 };
 
 const styles = StyleSheet.create({
@@ -40,7 +41,7 @@ const styles = StyleSheet.create({
     width: "76%",
     height: 250,
     borderRadius: 24,
-    backgroundColor: "#334155",
+    backgroundColor: colors.guide,
     padding: 14,
     marginVertical: 4,
   },
@@ -49,9 +50,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.14)",
+    backgroundColor: colors.guideFill,
     borderWidth: 2,
-    borderColor: "#fde68a",
+    borderColor: colors.guideLine,
   },
   square: {
     width: 108,
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 108,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
-    borderBottomColor: "#fef3c7",
+    borderBottomColor: colors.guideLine,
   },
   triangleFill: {
     position: "absolute",
@@ -92,20 +93,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 92,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
-    borderBottomColor: "rgba(255,255,255,0.16)",
-  },
-  spoon: { width: 112, height: 142, alignItems: "center" },
-  spoonBowl: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    ...contour,
-  },
-  spoonHandle: {
-    width: 24,
-    height: 68,
-    marginTop: -4,
-    borderRadius: 12,
-    ...contour,
+    borderBottomColor: colors.guideFill,
   },
 });

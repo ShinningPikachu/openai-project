@@ -13,7 +13,6 @@ export class StaticShapeTargetRegistry implements ShapeTargetRegistry {
   }
 
   getById(id: string) {
-    const targetId = id === "elongated" ? "spoon" : id;
-    return this.targets.find((target) => target.id === targetId) ?? null;
+    return this.targets.find((target) => target.id === id) ?? null;
   }
 }

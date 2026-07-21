@@ -1,6 +1,19 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
-import { challengeTypeLabels, type Alarm, type AlarmDraft, type ChallengeDifficulty, type ChallengeType, type RepeatDay } from "@/features/alarms/domain/alarm";
+import {
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import {
+  challengeTypeLabels,
+  type Alarm,
+  type AlarmDraft,
+  type ChallengeType,
+  type RepeatDay,
+} from "@/features/alarms/domain/alarm";
 import type { AppSettings } from "@/features/settings/domain/settings";
 import {
   normalizeShapeTargetId,
@@ -12,6 +25,7 @@ import {
   isExactAlarmPermissionError,
   isNotificationPermissionError,
 } from "@/platform/alarmScheduler";
+import { colors } from "@/theme/colors";
 import { TimeWheelPicker } from "./TimeWheelPicker";
 
 const days: RepeatDay[] = [
@@ -24,8 +38,11 @@ const days: RepeatDay[] = [
   "sunday",
 ];
 
-const challengeTypes: ChallengeType[] = ["shape-photo", "quick-addition", "connect-dots"];
-const challengeDifficulties: ChallengeDifficulty[] = ["easy", "normal", "hard"];
+const challengeTypes: ChallengeType[] = [
+  "shape-photo",
+  "quick-addition",
+  "connect-dots",
+];
 
 export function AlarmEditorForm({
   alarm,
@@ -40,7 +57,9 @@ export function AlarmEditorForm({
   const [hour, setHour] = useState(alarm?.hour ?? 7);
   const [minute, setMinute] = useState(alarm?.minute ?? 0);
   const [enabled, setEnabled] = useState(alarm?.enabled ?? true);
-  const [repeatDays, setRepeatDays] = useState<RepeatDay[]>(alarm?.repeatDays ?? []);
+  const [repeatDays, setRepeatDays] = useState<RepeatDay[]>(
+    alarm?.repeatDays ?? [],
+  );
   const [vibrationEnabled, setVibrationEnabled] = useState(
     alarm?.vibrationEnabled ?? settings?.defaultVibrationEnabled ?? true,
   );
@@ -50,31 +69,38 @@ export function AlarmEditorForm({
   const [challengeType, setChallengeType] = useState<ChallengeType>(
     alarm?.challengeType ?? "shape-photo",
   );
-  const [challengeDifficulty, setChallengeDifficulty] = useState<ChallengeDifficulty>(
-    alarm?.challengeDifficulty ?? settings?.defaultChallengeDifficulty ?? "normal",
-  );
   const [additionQuestionCount, setAdditionQuestionCount] = useState(
     String(alarm?.additionQuestionCount ?? 3),
   );
   const [error, setError] = useState<string | null>(null);
-  const [needsExactAlarmPermission, setNeedsExactAlarmPermission] = useState(false);
-  const [needsNotificationPermission, setNeedsNotificationPermission] = useState(false);
+  const [needsExactAlarmPermission, setNeedsExactAlarmPermission] =
+    useState(false);
+  const [needsNotificationPermission, setNeedsNotificationPermission] =
+    useState(false);
 
   const openExactAlarmSettings = async () => {
     try {
       await alarmNativeActions.openExactAlarmSettings();
-      setError("Android alarm settings opened. Allow Alarms & reminders, then save this alarm again.");
+      setError(
+        "Android alarm settings opened. Allow Alarms & reminders, then save this alarm again.",
+      );
     } catch {
-      setError("Exact alarm access is required. Use the button below to open Android alarm settings.");
+      setError(
+        "Exact alarm access is required. Use the button below to open Android alarm settings.",
+      );
     }
   };
 
   const openNotificationSettings = async () => {
     try {
       await alarmNativeActions.openNotificationSettings();
-      setError("Android notification settings opened. Allow notifications, then save this alarm again.");
+      setError(
+        "Android notification settings opened. Allow notifications, then save this alarm again.",
+      );
     } catch {
-      setError("Notification permission is required. Use the button below to open Android notification settings.");
+      setError(
+        "Notification permission is required. Use the button below to open Android notification settings.",
+      );
     }
   };
 
@@ -95,7 +121,9 @@ export function AlarmEditorForm({
     }
     if (
       challengeType === "quick-addition" &&
-      (!Number.isInteger(numericAdditionQuestionCount) || numericAdditionQuestionCount < 1 || numericAdditionQuestionCount > 8)
+      (!Number.isInteger(numericAdditionQuestionCount) ||
+        numericAdditionQuestionCount < 1 ||
+        numericAdditionQuestionCount > 8)
     ) {
       setError("Choose from 1 to 8 addition questions.");
       return;
@@ -112,9 +140,13 @@ export function AlarmEditorForm({
         repeatDays,
         vibrationEnabled,
         challengeType,
-        challengeDifficulty,
+        challengeDifficulty:
+          alarm?.challengeDifficulty ??
+          settings?.defaultChallengeDifficulty ??
+          "normal",
         targetShapeId,
-        additionQuestionCount: challengeType === "quick-addition" ? numericAdditionQuestionCount : 3,
+        additionQuestionCount:
+          challengeType === "quick-addition" ? numericAdditionQuestionCount : 3,
       });
     } catch (cause) {
       console.error(cause);
@@ -146,6 +178,7 @@ export function AlarmEditorForm({
         value={label}
         onChangeText={setLabel}
         placeholder="Morning alarm"
+        placeholderTextColor={colors.textMuted}
         style={styles.input}
         accessibilityLabel="Alarm label"
       />
@@ -206,11 +239,19 @@ export function AlarmEditorForm({
               <Pressable
                 key={type}
                 onPress={() => setChallengeType(type)}
-                style={[styles.challengeType, selected && styles.challengeTypeSelected]}
+                style={[
+                  styles.challengeType,
+                  selected && styles.challengeTypeSelected,
+                ]}
                 accessibilityRole="radio"
                 accessibilityState={{ selected }}
               >
-                <Text style={[styles.challengeTypeText, selected && styles.challengeTypeTextSelected]}>
+                <Text
+                  style={[
+                    styles.challengeTypeText,
+                    selected && styles.challengeTypeTextSelected,
+                  ]}
+                >
                   {challengeTypeLabels[type]}
                 </Text>
               </Pressable>
@@ -218,51 +259,45 @@ export function AlarmEditorForm({
           })}
         </View>
       </View>
-      <View>
-        <Text style={styles.label}>Challenge difficulty</Text>
-        <View style={styles.difficulties}>
-          {challengeDifficulties.map((difficulty) => {
-            const selected = difficulty === challengeDifficulty;
-            return (
-              <Pressable
-                key={difficulty}
-                onPress={() => setChallengeDifficulty(difficulty)}
-                style={[styles.difficulty, selected && styles.difficultySelected]}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-              >
-                <Text style={[styles.difficultyText, selected && styles.difficultyTextSelected]}>
-                  {difficulty}
-                </Text>
-              </Pressable>
-            );
-          })}
+      {challengeType === "shape-photo" ? (
+        <View>
+          <Text style={styles.label}>Target shape</Text>
+          <View style={styles.shapeTargets}>
+            {simpleShapeTargets.map((shape) => {
+              const selected = shape.id === targetShapeId;
+              return (
+                <Pressable
+                  key={shape.id}
+                  onPress={() => setTargetShapeId(shape.id)}
+                  style={[
+                    styles.shapeTarget,
+                    selected && styles.shapeTargetSelected,
+                  ]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                >
+                  <Text
+                    style={[
+                      styles.shapeTargetName,
+                      selected && styles.shapeTargetTextSelected,
+                    ]}
+                  >
+                    {shape.name}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.shapeTargetDescription,
+                      selected && styles.shapeTargetTextSelected,
+                    ]}
+                  >
+                    {shape.description}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
-      </View>
-      {challengeType === "shape-photo" ? <View>
-        <Text style={styles.label}>Target shape</Text>
-        <View style={styles.shapeTargets}>
-          {simpleShapeTargets.map((shape) => {
-            const selected = shape.id === targetShapeId;
-            return (
-              <Pressable
-                key={shape.id}
-                onPress={() => setTargetShapeId(shape.id)}
-                style={[styles.shapeTarget, selected && styles.shapeTargetSelected]}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-              >
-                <Text style={[styles.shapeTargetName, selected && styles.shapeTargetTextSelected]}>
-                  {shape.name}
-                </Text>
-                <Text style={[styles.shapeTargetDescription, selected && styles.shapeTargetTextSelected]}>
-                  {shape.description}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View> : null}
+      ) : null}
       {challengeType === "quick-addition" ? (
         <View>
           <Text style={styles.label}>Correct answers required (1–8)</Text>
@@ -270,13 +305,18 @@ export function AlarmEditorForm({
             value={additionQuestionCount}
             onChangeText={setAdditionQuestionCount}
             keyboardType="number-pad"
+            placeholderTextColor={colors.textMuted}
             style={styles.input}
             accessibilityLabel="Correct addition answers required"
           />
         </View>
       ) : null}
 
-      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
       {needsExactAlarmPermission ? (
         <Pressable
           onPress={() => void openExactAlarmSettings()}
@@ -293,7 +333,11 @@ export function AlarmEditorForm({
           <Text style={styles.permission}>Allow alarm notifications</Text>
         </Pressable>
       ) : null}
-      <Pressable onPress={submit} style={styles.save} accessibilityRole="button">
+      <Pressable
+        onPress={submit}
+        style={styles.save}
+        accessibilityRole="button"
+      >
         <Text style={styles.saveText}>Save alarm</Text>
       </Pressable>
     </View>
@@ -302,27 +346,29 @@ export function AlarmEditorForm({
 
 const styles = StyleSheet.create({
   form: { gap: 14 },
-  label: { fontWeight: "600", marginBottom: 4 },
+  label: { color: colors.text, fontWeight: "600", marginBottom: 4 },
   input: {
     borderWidth: 1,
-    borderColor: "#9ca3af",
+    borderColor: colors.border,
     borderRadius: 10,
     padding: 12,
     fontSize: 16,
+    backgroundColor: colors.surface,
+    color: colors.text,
   },
   row: { flexDirection: "row", gap: 12 },
   timePart: { flex: 1 },
   days: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
   day: {
     borderWidth: 1,
-    borderColor: "#9ca3af",
+    borderColor: colors.border,
     borderRadius: 8,
     paddingVertical: 9,
     paddingHorizontal: 10,
     textTransform: "capitalize",
   },
-  daySelected: { backgroundColor: "#1d4ed8", borderColor: "#1d4ed8" },
-  dayTextSelected: { color: "white" },
+  daySelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  dayTextSelected: { color: colors.surface },
   switchRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -330,34 +376,40 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   challengeTypes: { gap: 8 },
-  challengeType: { borderWidth: 1, borderColor: "#9ca3af", borderRadius: 10, padding: 12 },
-  challengeTypeSelected: { backgroundColor: "#1d4ed8", borderColor: "#1d4ed8" },
-  challengeTypeText: { fontWeight: "700" },
-  challengeTypeTextSelected: { color: "white" },
-  difficulties: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  difficulty: { borderWidth: 1, borderColor: "#9ca3af", borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14 },
-  difficultySelected: { backgroundColor: "#1d4ed8", borderColor: "#1d4ed8" },
-  difficultyText: { fontWeight: "700", textTransform: "capitalize" },
-  difficultyTextSelected: { color: "white" },
-  shapeTargets: { gap: 8 },
-  shapeTarget: {
+  challengeType: {
     borderWidth: 1,
-    borderColor: "#9ca3af",
+    borderColor: colors.border,
     borderRadius: 10,
     padding: 12,
   },
-  shapeTargetSelected: { backgroundColor: "#1d4ed8", borderColor: "#1d4ed8" },
-  shapeTargetName: { fontWeight: "700" },
-  shapeTargetDescription: { color: "#4b5563", marginTop: 2 },
-  shapeTargetTextSelected: { color: "white" },
-  error: { color: "#b42318" },
-  permission: { color: "#1d4ed8", fontWeight: "700", textAlign: "center" },
+  challengeTypeSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  challengeTypeText: { color: colors.text, fontWeight: "700" },
+  challengeTypeTextSelected: { color: colors.surface },
+  shapeTargets: { gap: 8 },
+  shapeTarget: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: 12,
+  },
+  shapeTargetSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  shapeTargetName: { color: colors.text, fontWeight: "700" },
+  shapeTargetDescription: { color: colors.textMuted, marginTop: 2 },
+  shapeTargetTextSelected: { color: colors.surface },
+  error: { color: colors.danger },
+  permission: { color: colors.primary, fontWeight: "700", textAlign: "center" },
   save: {
-    backgroundColor: "#1d4ed8",
+    backgroundColor: colors.primary,
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
     marginTop: 8,
   },
-  saveText: { color: "white", fontWeight: "700", fontSize: 16 },
+  saveText: { color: colors.surface, fontWeight: "700", fontSize: 16 },
 });

@@ -1,6 +1,7 @@
 import type { ChallengeDifficulty } from "@/features/alarms/domain/alarm";
 
-export type SimpleShapeTargetId = "circle" | "triangle" | "square" | "rectangle" | "spoon";
+export type SimpleShapeTargetId =
+  "circle" | "triangle" | "square" | "rectangle";
 
 export interface ShapeTarget {
   id: SimpleShapeTargetId;
@@ -47,21 +48,18 @@ export const simpleShapeTargets: readonly ShapeTarget[] = [
     minimumConfidence: challengeThresholds.normal,
     supportedDifficulties: ["easy", "normal", "hard"],
   },
-  {
-    id: "spoon",
-    name: "Spoon-like silhouette",
-    description: "A long shape with one distinctly wider end and a narrow handle",
-    minimumConfidence: challengeThresholds.normal,
-    supportedDifficulties: ["easy", "normal", "hard"],
-  },
 ];
 
 export function normalizeShapeTargetId(
   value: string | null | undefined,
 ): SimpleShapeTargetId {
-  if (value === "circle" || value === "triangle" || value === "square" || value === "rectangle" || value === "spoon") {
+  if (
+    value === "circle" ||
+    value === "triangle" ||
+    value === "square" ||
+    value === "rectangle"
+  ) {
     return value;
   }
-  if (value === "elongated") return "spoon";
   return defaultShapeTargetId;
 }

@@ -9,6 +9,7 @@ import type { AlarmChallengeViewProps } from "./AlarmChallengeView";
 import { ChallengeInstructions } from "./ChallengeInstructions";
 import { DetectionResultScreen } from "./DetectionResultScreen";
 import { ShapeOverlay } from "./ShapeOverlay";
+import { colors } from "@/theme/colors";
 
 const unavailableMessage =
   "The native camera challenge is unavailable in this build. Install an Android build with the camera challenge included.";
@@ -24,27 +25,40 @@ export function CameraChallengeScreen({
   const service = useMemo(() => new AndroidCameraChallengeService(), []);
   const targetRegistry = useMemo(() => new StaticShapeTargetRegistry(), []);
   const target = useMemo(
-    () => targetRegistry.getById(alarm.targetShapeId) ?? targetRegistry.getById("circle")!,
+    () =>
+      targetRegistry.getById(alarm.targetShapeId) ??
+      targetRegistry.getById("circle")!,
     [alarm.targetShapeId, targetRegistry],
   );
   const [permission, setPermission] = useState("unknown");
   const [result, setResult] = useState<ShapeDetectionResult | null>(null);
   const [cameraUnavailable, setCameraUnavailable] = useState(false);
 
-  const handleCameraError = useCallback((cause: unknown) => {
-    if (cause instanceof CameraUnavailableError) {
-      setCameraUnavailable(true);
-      onError(unavailableMessage);
-      return;
-    }
-    onError("Camera capture or local analysis failed. The alarm is still active.", cause);
-  }, [onError]);
+  const handleCameraError = useCallback(
+    (cause: unknown) => {
+      if (cause instanceof CameraUnavailableError) {
+        setCameraUnavailable(true);
+        onError(unavailableMessage);
+        return;
+      }
+      onError(
+        "Camera capture or local analysis failed. The alarm is still active.",
+        cause,
+      );
+    },
+    [onError],
+  );
 
   useEffect(() => {
-    void service.getPermissionStatus().then((status) => {
-      setPermission(status);
-      onSessionTransition(status === "granted" ? "camera-ready" : "preparing-camera");
-    }).catch(handleCameraError);
+    void service
+      .getPermissionStatus()
+      .then((status) => {
+        setPermission(status);
+        onSessionTransition(
+          status === "granted" ? "camera-ready" : "preparing-camera",
+        );
+      })
+      .catch(handleCameraError);
   }, [handleCameraError, onSessionTransition, service]);
 
   const requestPermission = async () => {
@@ -70,7 +84,11 @@ export function CameraChallengeScreen({
     try {
       setResult(null);
       onSessionTransition("processing");
-      const response = await analyzeCapturedImage(service, target.id, alarm.challengeDifficulty);
+      const response = await analyzeCapturedImage(
+        service,
+        target.id,
+        alarm.challengeDifficulty,
+      );
       if (response.result.accepted) {
         await onAccepted(response.result);
       } else {
@@ -83,10 +101,16 @@ export function CameraChallengeScreen({
   };
 
   if (result && !result.accepted) {
-    return <DetectionResultScreen result={result} attemptCount={session.attemptCount} onTryAgain={() => {
-      setResult(null);
-      onRetry();
-    }} />;
+    return (
+      <DetectionResultScreen
+        result={result}
+        attemptCount={session.attemptCount}
+        onTryAgain={() => {
+          setResult(null);
+          onRetry();
+        }}
+      />
+    );
   }
 
   return (
@@ -101,11 +125,22 @@ export function CameraChallengeScreen({
               ? unavailableMessage
               : "Camera access is required to analyze an object and complete the alarm challenge. Shape data is processed locally and is not uploaded."}
           </Text>
-          <Pressable style={[styles.button, cameraUnavailable && styles.disabled]} disabled={cameraUnavailable} onPress={() => void requestPermission()}>
+          <Pressable
+            style={[styles.button, cameraUnavailable && styles.disabled]}
+            disabled={cameraUnavailable}
+            onPress={() => void requestPermission()}
+          >
             <Text style={styles.buttonText}>Allow camera</Text>
           </Pressable>
-          <Pressable disabled={cameraUnavailable} onPress={() => void openSettings()}>
-            <Text style={[styles.link, cameraUnavailable && styles.disabledText]}>Open app settings</Text>
+          <Pressable
+            disabled={cameraUnavailable}
+            onPress={() => void openSettings()}
+          >
+            <Text
+              style={[styles.link, cameraUnavailable && styles.disabledText]}
+            >
+              Open app settings
+            </Text>
           </Pressable>
         </View>
       ) : (
@@ -115,7 +150,11 @@ export function CameraChallengeScreen({
           style={[styles.capture, cameraUnavailable && styles.disabled]}
           onPress={() => void capture()}
         >
-          <Text style={styles.buttonText}>{session.status === "processing" ? "Processing…" : "Open automatic shape camera"}</Text>
+          <Text style={styles.buttonText}>
+            {session.status === "processing"
+              ? "Processing…"
+              : "Open automatic shape camera"}
+          </Text>
         </Pressable>
       )}
       <Text>Attempt {session.attemptCount}</Text>
@@ -125,12 +164,32 @@ export function CameraChallengeScreen({
 
 const styles = StyleSheet.create({
   container: { gap: 16 },
-  target: { fontSize: 20, fontWeight: "700", textAlign: "center" },
-  card: { gap: 12, padding: 16, backgroundColor: "#fff", borderRadius: 12 },
-  button: { backgroundColor: "#1d4ed8", padding: 14, borderRadius: 10, alignItems: "center" },
-  capture: { backgroundColor: "#16a34a", padding: 18, borderRadius: 999, alignItems: "center" },
-  buttonText: { color: "white", fontWeight: "800" },
+  target: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  card: {
+    gap: 12,
+    padding: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+  },
+  button: {
+    backgroundColor: colors.primary,
+    padding: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  capture: {
+    backgroundColor: colors.success,
+    padding: 18,
+    borderRadius: 999,
+    alignItems: "center",
+  },
+  buttonText: { color: colors.surface, fontWeight: "800" },
   disabled: { opacity: 0.5 },
   disabledText: { opacity: 0.6 },
-  link: { color: "#1d4ed8", fontWeight: "700", textAlign: "center" },
+  link: { color: colors.primary, fontWeight: "700", textAlign: "center" },
 });
