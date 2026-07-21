@@ -8,7 +8,7 @@ export function QuickAdditionChallenge({
   onAccepted,
   onSessionTransition,
 }: AlarmChallengeViewProps) {
-  const [question, setQuestion] = useState(() => generateAdditionQuestion());
+  const [question, setQuestion] = useState(() => generateAdditionQuestion(alarm.challengeDifficulty));
   const [answer, setAnswer] = useState("");
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
@@ -17,7 +17,7 @@ export function QuickAdditionChallenge({
   const requiredAnswers = alarm.additionQuestionCount;
 
   const nextQuestion = () => {
-    setQuestion(generateAdditionQuestion());
+    setQuestion(generateAdditionQuestion(alarm.challengeDifficulty));
     setAnswer("");
   };
 

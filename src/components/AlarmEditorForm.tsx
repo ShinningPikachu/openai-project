@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
-import { challengeTypeLabels, type Alarm, type AlarmDraft, type ChallengeType, type RepeatDay } from "@/features/alarms/domain/alarm";
+import { challengeTypeLabels, type Alarm, type AlarmDraft, type ChallengeDifficulty, type ChallengeType, type RepeatDay } from "@/features/alarms/domain/alarm";
 import type { AppSettings } from "@/features/settings/domain/settings";
 import {
   normalizeShapeTargetId,
@@ -12,6 +12,7 @@ import {
   isExactAlarmPermissionError,
   isNotificationPermissionError,
 } from "@/platform/alarmScheduler";
+import { TimeWheelPicker } from "./TimeWheelPicker";
 
 const days: RepeatDay[] = [
   "monday",
@@ -24,6 +25,7 @@ const days: RepeatDay[] = [
 ];
 
 const challengeTypes: ChallengeType[] = ["shape-photo", "quick-addition", "connect-dots"];
+const challengeDifficulties: ChallengeDifficulty[] = ["easy", "normal", "hard"];
 
 export function AlarmEditorForm({
   alarm,
@@ -35,8 +37,8 @@ export function AlarmEditorForm({
   onSave(draft: AlarmDraft): Promise<void>;
 }) {
   const [label, setLabel] = useState(alarm?.label ?? "");
-  const [hour, setHour] = useState(String(alarm?.hour ?? 7));
-  const [minute, setMinute] = useState(String(alarm?.minute ?? 0));
+  const [hour, setHour] = useState(alarm?.hour ?? 7);
+  const [minute, setMinute] = useState(alarm?.minute ?? 0);
   const [enabled, setEnabled] = useState(alarm?.enabled ?? true);
   const [repeatDays, setRepeatDays] = useState<RepeatDay[]>(alarm?.repeatDays ?? []);
   const [vibrationEnabled, setVibrationEnabled] = useState(
@@ -47,6 +49,9 @@ export function AlarmEditorForm({
   );
   const [challengeType, setChallengeType] = useState<ChallengeType>(
     alarm?.challengeType ?? "shape-photo",
+  );
+  const [challengeDifficulty, setChallengeDifficulty] = useState<ChallengeDifficulty>(
+    alarm?.challengeDifficulty ?? settings?.defaultChallengeDifficulty ?? "normal",
   );
   const [additionQuestionCount, setAdditionQuestionCount] = useState(
     String(alarm?.additionQuestionCount ?? 3),
@@ -74,8 +79,8 @@ export function AlarmEditorForm({
   };
 
   const submit = async () => {
-    const numericHour = Number(hour);
-    const numericMinute = Number(minute);
+    const numericHour = hour;
+    const numericMinute = minute;
     const numericAdditionQuestionCount = Number(additionQuestionCount);
     if (
       !Number.isInteger(numericHour) ||
@@ -107,8 +112,7 @@ export function AlarmEditorForm({
         repeatDays,
         vibrationEnabled,
         challengeType,
-        challengeDifficulty:
-          alarm?.challengeDifficulty ?? settings?.defaultChallengeDifficulty ?? "normal",
+        challengeDifficulty,
         targetShapeId,
         additionQuestionCount: challengeType === "quick-addition" ? numericAdditionQuestionCount : 3,
       });
@@ -148,23 +152,21 @@ export function AlarmEditorForm({
 
       <View style={styles.row}>
         <View style={styles.timePart}>
-          <Text style={styles.label}>Hour (0–23)</Text>
-          <TextInput
+          <Text style={styles.label}>Hour</Text>
+          <TimeWheelPicker
             value={hour}
-            onChangeText={setHour}
-            keyboardType="number-pad"
-            style={styles.input}
-            accessibilityLabel="Hour"
+            maximum={23}
+            label="Hour"
+            onValueChange={setHour}
           />
         </View>
         <View style={styles.timePart}>
-          <Text style={styles.label}>Minute (0–59)</Text>
-          <TextInput
+          <Text style={styles.label}>Minute</Text>
+          <TimeWheelPicker
             value={minute}
-            onChangeText={setMinute}
-            keyboardType="number-pad"
-            style={styles.input}
-            accessibilityLabel="Minute"
+            maximum={59}
+            label="Minute"
+            onValueChange={setMinute}
           />
         </View>
       </View>
@@ -210,6 +212,27 @@ export function AlarmEditorForm({
               >
                 <Text style={[styles.challengeTypeText, selected && styles.challengeTypeTextSelected]}>
                   {challengeTypeLabels[type]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+      <View>
+        <Text style={styles.label}>Challenge difficulty</Text>
+        <View style={styles.difficulties}>
+          {challengeDifficulties.map((difficulty) => {
+            const selected = difficulty === challengeDifficulty;
+            return (
+              <Pressable
+                key={difficulty}
+                onPress={() => setChallengeDifficulty(difficulty)}
+                style={[styles.difficulty, selected && styles.difficultySelected]}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.difficultyText, selected && styles.difficultyTextSelected]}>
+                  {difficulty}
                 </Text>
               </Pressable>
             );
@@ -311,6 +334,11 @@ const styles = StyleSheet.create({
   challengeTypeSelected: { backgroundColor: "#1d4ed8", borderColor: "#1d4ed8" },
   challengeTypeText: { fontWeight: "700" },
   challengeTypeTextSelected: { color: "white" },
+  difficulties: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  difficulty: { borderWidth: 1, borderColor: "#9ca3af", borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14 },
+  difficultySelected: { backgroundColor: "#1d4ed8", borderColor: "#1d4ed8" },
+  difficultyText: { fontWeight: "700", textTransform: "capitalize" },
+  difficultyTextSelected: { color: "white" },
   shapeTargets: { gap: 8 },
   shapeTarget: {
     borderWidth: 1,

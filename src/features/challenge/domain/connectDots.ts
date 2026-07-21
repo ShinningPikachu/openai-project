@@ -1,3 +1,5 @@
+import type { ChallengeDifficulty } from "@/features/alarms/domain/alarm";
+
 export interface ConnectDot {
   x: number;
   y: number;
@@ -7,23 +9,48 @@ export interface ConnectDotsPattern {
   points: readonly ConnectDot[];
 }
 
-const patterns: readonly ConnectDotsPattern[] = [
-  { points: [{ x: 0.18, y: 0.72 }, { x: 0.3, y: 0.28 }, { x: 0.56, y: 0.17 }, { x: 0.81, y: 0.34 }, { x: 0.73, y: 0.73 }, { x: 0.43, y: 0.83 }] },
-  { points: [{ x: 0.18, y: 0.53 }, { x: 0.34, y: 0.23 }, { x: 0.67, y: 0.2 }, { x: 0.83, y: 0.49 }, { x: 0.67, y: 0.79 }, { x: 0.32, y: 0.75 }] },
-  { points: [{ x: 0.19, y: 0.31 }, { x: 0.48, y: 0.18 }, { x: 0.77, y: 0.31 }, { x: 0.67, y: 0.58 }, { x: 0.49, y: 0.82 }, { x: 0.25, y: 0.65 }] },
-];
+type Random = () => number;
 
-export const generateConnectDotsPattern = (
-  random: () => number = Math.random,
-): ConnectDotsPattern => {
-  const pattern = patterns[Math.floor(random() * patterns.length)]!;
-  const mirrorHorizontally = random() >= 0.5;
-  const mirrorVertically = random() >= 0.5;
+const pointCounts: Record<ChallengeDifficulty, number> = {
+  easy: 6,
+  normal: 8,
+  hard: 10,
+};
+
+const gridSize = 4;
+const jitter = 0.02;
+
+const shuffle = <T,>(items: readonly T[], random: Random): T[] => {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex]!, shuffled[index]!];
+  }
+  return shuffled;
+};
+
+const gridCells = Array.from({ length: gridSize * gridSize }, (_, index) => ({
+  column: index % gridSize,
+  row: Math.floor(index / gridSize),
+}));
+
+export function generateConnectDotsPattern(random?: Random): ConnectDotsPattern;
+export function generateConnectDotsPattern(
+  difficulty: ChallengeDifficulty,
+  random?: Random,
+): ConnectDotsPattern;
+export function generateConnectDotsPattern(
+  difficultyOrRandom: ChallengeDifficulty | Random = "normal",
+  providedRandom: Random = Math.random,
+): ConnectDotsPattern {
+  const random = typeof difficultyOrRandom === "function" ? difficultyOrRandom : providedRandom;
+  const difficulty = typeof difficultyOrRandom === "function" ? "normal" : difficultyOrRandom;
+  const selectedCells = shuffle(gridCells, random).slice(0, pointCounts[difficulty]);
 
   return {
-    points: pattern.points.map((point) => ({
-      x: mirrorHorizontally ? 1 - point.x : point.x,
-      y: mirrorVertically ? 1 - point.y : point.y,
+    points: selectedCells.map(({ column, row }) => ({
+      x: (column + 0.5) / gridSize + (random() - 0.5) * jitter * 2,
+      y: (row + 0.5) / gridSize + (random() - 0.5) * jitter * 2,
     })),
   };
-};
+}

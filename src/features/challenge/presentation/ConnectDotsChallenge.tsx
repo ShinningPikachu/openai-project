@@ -16,8 +16,8 @@ const Segment = ({ from, to, color }: { from: ConnectDot; to: ConnectDot; color:
   return <View pointerEvents="none" style={[styles.segment, { backgroundColor: color, width: length, left: (from.x + to.x - length) / 2, top: (from.y + to.y) / 2 - 2, transform: [{ rotate: `${Math.atan2(deltaY, deltaX)}rad` }] }]} />;
 };
 
-export function ConnectDotsChallenge({ onAccepted, onSessionTransition }: AlarmChallengeViewProps) {
-  const [pattern] = useState(() => generateConnectDotsPattern());
+export function ConnectDotsChallenge({ alarm, onAccepted, onSessionTransition }: AlarmChallengeViewProps) {
+  const [pattern] = useState(() => generateConnectDotsPattern(alarm.challengeDifficulty));
   const [boardMetrics, setBoardMetrics] = useState<BoardMetrics>({ x: 0, y: 0, width: 0, height: 0 });
   const [completedCount, setCompletedCount] = useState(0);
   const [message, setMessage] = useState("Start at dot 1, then drag through each numbered dot in order.");
